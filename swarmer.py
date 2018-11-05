@@ -1,6 +1,7 @@
 import os
 
 import redis
+from docker import Client
 from sanic import Sanic
 from sanic.response import json, text
 
@@ -12,6 +13,8 @@ redis = create_redis()
 
 job_log = JobLog(redis)
 job_runner = JobRunner(job_log)
+
+docker_client = create_docker_client()
 
 
 @app.post('/submit')
@@ -42,8 +45,10 @@ async def submit_job_task(request, identifier):
 
     each object in the task list should have the following:
     task_name: string, the name of the specified task
-    task_command: string, the command to send to the image to run the task
     task_args: list[string], a list of extra arguments to send to the run command
+
+    Note: When running, it is assumed that the companion container to this
+    project is used which knows how to spin up your initial application.
 
     :param request: The incoming HTTP request
     :param identifier: The unique job identifier
@@ -69,7 +74,6 @@ async def report_result(request, identifier):
     :param identifier: The job identifier
     """
     pass
-# app.run(host='0.0.0.0', port=8500, debug=True)
 
 
 def create_redis():
@@ -77,3 +81,13 @@ def create_redis():
     redis_port = os.environ.get('REDIS_PORT')
     redis_db = os.environ.get('REDIS_DATABASE')
     return redis.StrictRedis(host=redis_host, port=redis_port, db=redis_db)
+
+
+def create_docker_client():
+    socket_path = os.environ.get(
+        'DOCKER_SOCKET_PATH', 'unix://var/run/docker.sock')
+
+    if not socket_path.startswith('unix://'):
+        socket_path = 'unix://{0}'.format(socket_path)
+
+    return Client(base_url=socket_path)
