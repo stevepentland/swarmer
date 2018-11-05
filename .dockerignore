@@ -1,0 +1,9 @@
+.idea/
+.vscode/
+__pycache__/
+.git
+.gitignore
+Dockerfile
+.dockerignore
+LICENSE
+README.md
