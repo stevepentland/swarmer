@@ -7,14 +7,38 @@ from sanic.response import json, text
 
 from db.job_log import JobLog
 from jobs.runner import JobRunner
+from models import RunnerConfig
+
+
+def _create_redis():
+    """ Helper method to create the redis client """
+    redis_host = os.environ['REDIS_TARGET']
+    redis_port = os.environ['REDIS_PORT']
+    redis_db = os.environ['REDIS_DATABASE']
+    return redis.StrictRedis(host=redis_host, port=redis_port, db=redis_db)
+
+
+def _create_docker_client():
+    """ Helper method to create the docker client """
+    socket_path = os.environ.get(
+        'DOCKER_SOCKET_PATH', 'unix://var/run/docker.sock')
+
+    # I'm not 100% sure I want to do this instead of failing
+    # but for now I'll keep it since we expect to run from within
+    # a docker image
+    if not socket_path.startswith('unix://'):
+        socket_path = 'unix://{0}'.format(socket_path)
+
+    return Client(base_url=socket_path)
+
 
 app = Sanic()
-redis = create_redis()
+redis = _create_redis()
+docker_client = _create_docker_client()
 
 job_log = JobLog(redis)
-job_runner = JobRunner(job_log)
 
-docker_client = create_docker_client()
+job_runner = JobRunner(job_log, docker_client, RunnerConfig.from_environ())
 
 
 @app.post('/submit')
@@ -74,20 +98,3 @@ async def report_result(request, identifier):
     :param identifier: The job identifier
     """
     pass
-
-
-def create_redis():
-    redis_host = os.environ.get('REDIS_TARGET')
-    redis_port = os.environ.get('REDIS_PORT')
-    redis_db = os.environ.get('REDIS_DATABASE')
-    return redis.StrictRedis(host=redis_host, port=redis_port, db=redis_db)
-
-
-def create_docker_client():
-    socket_path = os.environ.get(
-        'DOCKER_SOCKET_PATH', 'unix://var/run/docker.sock')
-
-    if not socket_path.startswith('unix://'):
-        socket_path = 'unix://{0}'.format(socket_path)
-
-    return Client(base_url=socket_path)
