@@ -27,9 +27,7 @@ def test_task(mocker):
     subject.add_tasks('abc', [{'task_name': 'one', 'task_args': [0, 1, 2]}, {
                       'task_name': 'two', 'task_args': [2, 1, 0]}])
     r_mock.exists.assert_called_once_with('abc')
-    r_mock.hmset.assert_called_once_with('abc', {'tasks': [{'args': [0, 1, 2], 'status': 'off', 'result': 'none', 'name': 'one'},
-                                                           {'args': [2, 1, 0], 'status': 'off', 'result': 'none', 'name': 'two'}],
-                                                 '__task_count_total': 2, '__task_count_started': 0, '__task_count_complete': 0})
+    r_mock.hmset.assert_called_once_with('abc', {'tasks': '[{"args": [0, 1, 2], "status": "off", "result": "none", "name": "one"}, {"args": [2, 1, 0], "status": "off", "result": "none", "name": "two"}]', '__task_count_total': 2, '__task_count_started': 0, '__task_count_complete': 0})
 
 
 def test_task_raises(mocker):
