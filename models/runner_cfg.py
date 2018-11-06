@@ -1,13 +1,16 @@
+import os
+
+
 class RunnerConfig:
     def __init__(self, host, port):
         self._host = host
         self._port = port
 
-    @staticmethod
-    def from_environ():
-        import os
-        return RunnerConfig(os.environ['RUNNER_HOST_NAME'],
-                            os.environ['RUNNER_PORT'])
+    @classmethod
+    def from_environ(cls):
+        cfg = cls(os.environ['RUNNER_HOST_NAME'],
+                  os.environ['RUNNER_PORT'])
+        return cfg
 
     @property
     def host(self):

@@ -12,7 +12,7 @@ class JobLog:
     def add_job(self, identifier: str, image_name: str, callback: str):
         """ Add a new job to the tracking database
 
-        :param identifier: The unique run identifier
+        :param identifier: The unique job identifier
         :param image_name: The name of the image that is used to run each job
         :param callback: The URL to POST back all results
         """
@@ -23,15 +23,15 @@ class JobLog:
         """ Add a list of tasks to the given job, when all tasks
         are complete, the job is considered finished.
 
-        :param identifier: The unique run identifier
+        :param identifier: The unique job identifier
         :param tasks: A list of task objects
         """
         if not self.__redis.exists(identifier):
             raise ValueError(
                 'Can not find item with identifier: {id}'.format(id=identifier))
 
-        task_dict = {'tasks': [{t['task_name']: {
-            'args': t['task_args'], 'status': 'off', 'result': 'none'}} for t in tasks]}
+        task_dict = {'tasks': [{
+            'args': t['task_args'], 'status': 'off', 'result': 'none', 'name': t['task_name']} for t in tasks]}
         task_dict['__task_count_total'] = len(tasks)
         task_dict['__task_count_started'] = 0
         task_dict['__task_count_complete'] = 0
@@ -41,13 +41,15 @@ class JobLog:
     def update_status(self, identifier: str, task_name: str, status: str):
         """ Update the status of a run
 
-        :param identifier: The unique run identifier
+        :param identifier: The unique job identifier
         :param task_name: The individual task name to update the status of
         :param status: The status of the task, as a JSON encoded object string
         """
         task = self.__get_task(identifier, task_name)
         task['status'] = status
-        self.__redis.hmset(identifier, {task_name: task})
+        task_list = self.__get_task_list(identifier)
+        update = [task if t['name'] == task['name'] else t for t in task_list]
+        self.__redis.hset(identifier, 'tasks', json.dumps(update))
 
     def update_result(self, identifier: str, task_name: str, result: str):
         """ Update the result of a task run
@@ -58,12 +60,14 @@ class JobLog:
         """
         task = self.__get_task(identifier, task_name)
         task['result'] = result
-        self.__redis.hmset(identifier, {task_name: task})
+        task_list = self.__get_task_list(identifier)
+        update = [task if t['name'] == task['name'] else t for t in task_list]
+        self.__redis.hset(identifier, 'tasks', json.dumps(update))
 
     def get_job(self, identifier: str):
         """ Retrieve the tracking dict for the given job
 
-        :param identifier: The unique run identifier
+        :param identifier: The unique job identifier
         """
         if not self.__redis.exists(identifier):
             raise ValueError(
@@ -74,7 +78,7 @@ class JobLog:
     def get_task(self, identifier: str, task_name: str):
         """ Retrieve the status for an individual run in a job
 
-        :param identifier: The unique run identifier
+        :param identifier: The unique job identifier
         :param task_name: The name of the individual job
         """
         return self.__get_task(identifier, task_name)
@@ -88,12 +92,14 @@ class JobLog:
         """
         task = self.__get_task(identifier, task_name)
         task['__task_id'] = task_id
-        self.__redis.hmset(identifier, {task_name: task})
+        task_list = self.__get_task_list(identifier)
+        update = [task if t['name'] == task['name'] else t for t in task_list]
+        self.__redis.hset(identifier, 'tasks', json.dumps(update))
 
     def clear_job(self, identifier: str):
         """ Remove an entire job from the tracking DB
 
-        :param identifier: The unique run identifier
+        :param identifier: The unique job identifier
         """
         if not self.__redis.exists(identifier):
             raise ValueError(
@@ -101,10 +107,42 @@ class JobLog:
 
         self.__redis.delete(identifier)
 
-    def __get_task(self, identifier, name):
-        if not self.__redis.hexists(identifier, name):
-            raise ValueError('Unable to find task with identifier {id}, and name {name}'.format(
-                id=identifier, name=name))
+    def modify_task_count(self, identifier: str, key: str, modifier: int):
+        """ Increment/Decrement the task counter
 
-        val = self.__redis.hget(identifier, name)
-        return json.loads(val)
+        :param identifier: The unique job identifier
+        :param key: The counter key (__task_count_started or __task_count_complete)
+        :param modifier: The amount to increment/decrement as a positive or negative integer
+
+        :returns: The new value after increment/decrement
+        """
+        self.__redis.hincrby(identifier, key, modifier)
+
+    def get_task_count(self, identifier: str, key: str):
+        """ Get the current value of the task counter in question
+
+        :param identifier: The unique job identifier
+        :param key: The counter key (__task_count_started, __task_count_complete, or __task_count_total)
+        """
+        return self.__redis.hget(identifier, key)
+
+    def __get_task(self, identifier, name):
+        if not self.__redis.hexists(identifier, 'tasks'):
+            raise ValueError(
+                'Unable to find job with identifier {id} that has any tasks'.format(id=identifier))
+        tasks = json.loads(self.__redis.hget(identifier, 'tasks'))
+
+        if not any(t['name'] == name for t in tasks):
+            raise ValueError('Unable to locate task {name} in job {id}'.format(
+                name=name, id=identifier))
+
+        val = [t for t in tasks if t['name'] == name]
+
+        return val[0]
+
+    def __get_task_list(self, identifier):
+        if not self.__redis.hexists(identifier, 'tasks'):
+            raise ValueError(
+                'Unable to find job with identifier {id} that has any tasks'.format(id=identifier))
+
+        return json.loads(self.__redis.hget(identifier, 'tasks'))

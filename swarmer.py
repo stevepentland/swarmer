@@ -37,8 +37,8 @@ redis = _create_redis()
 docker_client = _create_docker_client()
 
 job_log = JobLog(redis)
-
-job_runner = JobRunner(job_log, docker_client, RunnerConfig.from_environ())
+runner_cfg = RunnerConfig.from_environ()
+job_runner = JobRunner(job_log, docker_client, runner_cfg)
 
 
 @app.post('/submit')
