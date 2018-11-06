@@ -133,3 +133,16 @@ def test_clear_job_raises(mocker):
     subject = JobLog(r_mock)
     with pytest.raises(ValueError):
         subject.clear_job('abc')
+
+
+def test_set_task_id(mocker):
+    r_mock = get_redis_mock(mocker)
+    r_mock.hexists = mocker.MagicMock(return_value=True)
+    r_mock.hget = mocker.MagicMock(
+        return_value='{"abc": "123", "status": "nothing"}')
+    subject = JobLog(r_mock)
+    subject.set_task_id('abc', '123', {'ID': 'value'})
+    r_mock.hexists.assert_called_once_with('abc', '123')
+    r_mock.hget.assert_called_once_with('abc', '123')
+    r_mock.hmset.assert_called_once_with(
+        'abc', {'123': {'abc': '123', 'status': 'nothing', '__task_id': {'ID': 'value'}}})
