@@ -2,6 +2,8 @@
 
 You can accomplish this via running with docker like so:
 docker run --rm --name test-redis -p 6379:6379 -d redis:5
+
+When running, set the TEST_INCLUDE_REDIS environment variable
 """
 
 import redis
