@@ -4,8 +4,8 @@ import docker
 import pytest
 import ulid
 
-from db.job_log import JobLog
-from jobs.runner import JobRunner
+from db import JobLog
+from jobs import JobRunner
 from models import RunnerConfig
 
 cfg = RunnerConfig('swarmer', '1234')
@@ -76,3 +76,47 @@ def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
     job_log_mock.update_status.assert_has_calls(update_status_calls)
     job_log_mock.modify_task_count.assert_has_calls(
         [call('abc', '__task_count_started', 1)] * 2)
+
+
+@injection_wrapper
+def test_complete_task(job_log_mock, docker_mock, mocker):
+    job_log_mock.get_task = mocker.Mock(
+        return_value={'name': 'test', 'args': ['a', 9, 'v']})
+    # Not testing post-complete logic in this test
+    job_log_mock.get_task_count = mocker.Mock(
+        side_effect=lambda i, k: 1 if k == '__task_count_complete' else 2)
+    subject = JobRunner(job_log_mock, docker_mock, cfg)
+    subject.complete_task('abc', 'test', 'PASSED', 'The test passed')
+    job_log_mock.update_result.assert_called_once_with(
+        'abc', 'test', 'The test passed')
+    job_log_mock.update_status.assert_called_once_with('abc', 'test', 'PASSED')
+    increment_calls = [call('abc', '__task_count_started', -1),
+                       call('abc', '__task_count_complete', 1)]
+    job_log_mock.modify_task_count.assert_has_calls(increment_calls)
+    job_log_mock.get_task.assert_called_once()
+    docker_mock.remove_service.assert_called_once_with('abc-test')
+    count_query_calls = [call('abc', '__task_count_complete'), call(
+        'abc', '__task_count_total')]
+    job_log_mock.get_task_count.assert_has_calls(count_query_calls)
+
+
+@injection_wrapper
+def test_complete_final_task(job_log_mock, docker_mock, mocker):
+    job_log_mock.get_task = mocker.Mock(
+        return_value={'name': 'test', 'args': ['a', 9, 'v']})
+    # We'll hit the completed branch now
+    job_log_mock.get_task_count = mocker.Mock(return_value=1)
+    subject = JobRunner(job_log_mock, docker_mock, cfg)
+    subject.complete_task('abc', 'test', 'PASSED', 'The test passed')
+    job_log_mock.update_result.assert_called_once_with(
+        'abc', 'test', 'The test passed')
+    job_log_mock.update_status.assert_called_once_with('abc', 'test', 'PASSED')
+    increment_calls = [call('abc', '__task_count_started', -1),
+                       call('abc', '__task_count_complete', 1)]
+    job_log_mock.modify_task_count.assert_has_calls(increment_calls)
+    job_log_mock.get_task.assert_called_once()
+    docker_mock.remove_service.assert_called_once_with('abc-test')
+    count_query_calls = [call('abc', '__task_count_complete'), call(
+        'abc', '__task_count_total')]
+    job_log_mock.get_task_count.assert_has_calls(count_query_calls)
+    job_log_mock.clear_job.assert_called_once_with('abc')

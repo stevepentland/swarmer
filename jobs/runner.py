@@ -24,7 +24,7 @@ class JobRunner:
         :param tasks: The collection of task objects to add
         """
         self.__job_log.add_tasks(identifier, tasks)
-        # Todo, queue max in next release
+        # TODO: queue max in next release
         # self.__run_tasks_from(identifier)
 
         # Just run all of the tasks for initial release
@@ -42,7 +42,6 @@ class JobRunner:
 
         self.__job_log.update_result(identifier, task_name, result)
         self.__job_log.update_status(identifier, task_name, status)
-        self.__job_log.increment_started_tasks(identifier)
         self.__job_log.modify_task_count(
             identifier, '__task_count_started', -1)
         self.__job_log.modify_task_count(
@@ -58,7 +57,11 @@ class JobRunner:
             pass
 
     def __run_tasks_from(self, identifier: str):
-        """ THIS IS A STUB, IT NEEDS TO BE FLESHED OUT """
+        """ THIS IS A STUB, IT NEEDS TO BE FLESHED OUT
+
+        This will be used to run remaining tasks once the max queue length is
+        being used.
+        """
         # job = self.__job_log.get_job(identifier)
         # tasks = job['tasks']
         # image = job['__image']
@@ -84,6 +87,7 @@ class JobRunner:
         run_args += task['task_args']
 
         # Build the docker service spec and fire it
+        # TODO: Check that it may actually be better to set all of these args as environment vars
         spec = docker.types.ContainerSpec(image, args=run_args)
         template = docker.types.TaskTemplate(spec, restart_policy='none')
         svc_id = self.__docker.create_service(
@@ -97,14 +101,14 @@ class JobRunner:
         self.__job_log.set_task_id(identifier, task['task_name'], svc_id)
         self.__job_log.update_status(identifier, task['task_name'], 'RUNNING')
 
-    def __remove_task_service(self, identifier: str, task):
+    def __remove_task_service(self, identifier: str, task_name):
         """ Instruct the docker client to remove the task service
 
         :param identifier: The unique job identifier
         :param task: The task from the job log to remove
         """
         self.__docker.remove_service(
-            '{id}-{name}'.format(id=identifier, name=task['name']))
+            '{id}-{name}'.format(id=identifier, name=task_name))
 
     def __submit_job_results(self, identifier):
         # Get the entire job and submit back to the callback address

@@ -5,8 +5,8 @@ from docker import Client
 from sanic import Sanic
 from sanic.response import json, text
 
-from db.job_log import JobLog
-from jobs.runner import JobRunner
+from db import JobLog
+from jobs import JobRunner
 from models import RunnerConfig
 
 

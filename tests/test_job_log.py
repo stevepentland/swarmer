@@ -1,4 +1,4 @@
-from db.job_log import JobLog
+from db import JobLog
 import redis
 import pytest
 from unittest.mock import call

@@ -6,11 +6,13 @@ docker run --rm --name test-redis -p 6379:6379 -d redis:5
 When running, set the TEST_INCLUDE_REDIS environment variable
 """
 
+import os
+
+import pytest
 import redis
 import ulid
-import pytest
-import os
-from db.job_log import JobLog
+
+from db import JobLog
 
 
 @pytest.mark.skipif(os.environ.get('TEST_INCLUDE_REDIS') is None, reason='requires local default redis to run')
