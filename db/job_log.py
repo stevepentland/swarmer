@@ -38,27 +38,27 @@ class JobLog:
 
         self.__redis.hmset(identifier, task_dict)
 
-    def update_status(self, identifier: str, job_name: str, status: str):
+    def update_status(self, identifier: str, task_name: str, status: str):
         """ Update the status of a run
 
         :param identifier: The unique run identifier
-        :param job_name: The individual job name to update the status of
-        :param status: The status of the job, as a JSON encoded object string
+        :param task_name: The individual task name to update the status of
+        :param status: The status of the task, as a JSON encoded object string
         """
-        task = self.__get_task(identifier, job_name)
+        task = self.__get_task(identifier, task_name)
         task['status'] = status
-        self.__redis.hmset(identifier, {job_name: task})
+        self.__redis.hmset(identifier, {task_name: task})
 
-    def update_result(self, identifier: str, job_name: str, result: str):
+    def update_result(self, identifier: str, task_name: str, result: str):
         """ Update the result of a task run
 
         :param identifier: The unique job identifier
-        :param job_name: The individual task name
+        :param task_name: The individual task name
         :param result: The string encoded task result
         """
-        task = self.__get_task(identifier, job_name)
+        task = self.__get_task(identifier, task_name)
         task['result'] = result
-        self.__redis.hmset(identifier, {job_name: task})
+        self.__redis.hmset(identifier, {task_name: task})
 
     def get_job(self, identifier: str):
         """ Retrieve the tracking dict for the given job
@@ -71,13 +71,24 @@ class JobLog:
 
         return self.__redis.hgetall(identifier)
 
-    def get_task(self, identifier: str, job_name: str):
+    def get_task(self, identifier: str, task_name: str):
         """ Retrieve the status for an individual run in a job
 
         :param identifier: The unique run identifier
-        :param job_name: The name of the individual job
+        :param task_name: The name of the individual job
         """
-        return self.__get_task(identifier, job_name)
+        return self.__get_task(identifier, task_name)
+
+    def set_task_id(self, identifier: str, task_name: str, task_id: dict):
+        """ Set the docker service identifier for the task
+
+        :param identifier: The unique job identifier
+        :param task_name: The name of the individual task
+        :param task_id: The id of the task service
+        """
+        task = self.__get_task(identifier, task_name)
+        task['__task_id'] = task_id
+        self.__redis.hmset(identifier, {task_name: task})
 
     def clear_job(self, identifier: str):
         """ Remove an entire job from the tracking DB
