@@ -7,6 +7,7 @@ from db import JobLog
 from jobs import JobRunner
 from models import RunnerConfig
 from docker.types.services import RestartPolicy
+from docker.client import ServiceCollection
 
 cfg = RunnerConfig('swarmer', '1234')
 
@@ -64,13 +65,15 @@ call_tasks = [
 ]
 
 
-@pytest.mark.skip
+class SvcMock:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
 @injection_wrapper
 def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
-    job_log_mock.get_job = mocker.MagicMock(return_value=subject_job)
-    service_mock = get_service_mock(mocker)
-    service_mock.id = mocker.Mock(return_value='12345')
-    docker_mock.services().create = mocker.MagicMock(return_value=service_mock)
+    job_log_mock.get_job = mocker.Mock(return_value=subject_job)
+    docker_mock.services.create = mocker.Mock(return_value=SvcMock(id='12345'))
     subject = JobRunner(job_log_mock, docker_mock, cfg)
     subject.add_tasks_to_job('abc', call_tasks)
     job_log_mock.add_tasks.assert_called_once_with('abc', call_tasks)
@@ -80,18 +83,17 @@ def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
                           restart_policy=restart_policy),
                      call('an-image', args=['--report_url', 'swarmer', '--report_port', '1234', '--', 'd', 'e', 'f'],
                           restart_policy=restart_policy)]
-    set_id_calls = [call('abc', 'one', '12345'), call('abc', 'two', '12345')]
+
     update_status_calls = [
         call('abc', 'one', 'RUNNING'), call('abc', 'two', 'RUNNING')]
 
-    docker_mock.services().create.assert_has_calls(service_calls)
-    job_log_mock.set_task_id.assert_has_calls(set_id_calls)
+    docker_mock.services.create.assert_has_calls(service_calls)
+    job_log_mock.set_task_id.assert_called()
     job_log_mock.update_status.assert_has_calls(update_status_calls)
     job_log_mock.modify_task_count.assert_has_calls(
         [call('abc', '__task_count_started', 1)] * 2)
 
 
-@pytest.mark.skip
 @injection_wrapper
 def test_complete_task(job_log_mock, docker_mock, mocker):
     job_log_mock.get_task = mocker.Mock(
@@ -107,13 +109,14 @@ def test_complete_task(job_log_mock, docker_mock, mocker):
     increment_calls = [call('abc', '__task_count_started', -1),
                        call('abc', '__task_count_complete', 1)]
     job_log_mock.modify_task_count.assert_has_calls(increment_calls)
-    job_log_mock.get_task.assert_called_once()
-    docker_mock.remove_service.assert_called_once_with('abc-test')
+    get_calls = [call('abc', 'test')] * 2
+    job_log_mock.get_task.assert_has_calls(get_calls)
+    docker_mock.services.get.assert_called_once_with('123456')
     count_query_calls = [call('abc', '__task_count_complete'), call(
         'abc', '__task_count_total')]
     job_log_mock.get_task_count.assert_has_calls(count_query_calls)
 
-@pytest.mark.skip
+
 @injection_wrapper
 def test_complete_final_task(job_log_mock, docker_mock, mocker):
     job_log_mock.get_task = mocker.Mock(
@@ -128,8 +131,9 @@ def test_complete_final_task(job_log_mock, docker_mock, mocker):
     increment_calls = [call('abc', '__task_count_started', -1),
                        call('abc', '__task_count_complete', 1)]
     job_log_mock.modify_task_count.assert_has_calls(increment_calls)
-    job_log_mock.get_task.assert_called_once()
-    docker_mock.remove_service.assert_called_once_with('abc-test')
+    get_calls = [call('abc', 'test')] * 2
+    job_log_mock.get_task.assert_has_calls(get_calls)
+    docker_mock.services.get.assert_called_once_with('123456')
     count_query_calls = [call('abc', '__task_count_complete'), call(
         'abc', '__task_count_total')]
     job_log_mock.get_task_count.assert_has_calls(count_query_calls)
