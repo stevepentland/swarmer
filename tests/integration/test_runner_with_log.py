@@ -1,4 +1,3 @@
-import pytest
 import json
 import ulid
 from docker import DockerClient

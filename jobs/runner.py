@@ -1,9 +1,11 @@
 import docker
 import ulid
+import json
 
 from db.job_log import JobLog
 from models import RunnerConfig
 from docker.types import RestartPolicy
+
 
 class JobRunner:
     def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, max_queue_len=12):
@@ -31,7 +33,7 @@ class JobRunner:
         for task in tasks:
             self.__start_task(identifier, task)
 
-    def complete_task(self, identifier, task_name, status, result):
+    def complete_task(self, identifier: str, task_name: str, status: str, result: str):
         """ Signal that a task run has been completed
 
         :param identifier: The unique job identifier
@@ -49,12 +51,23 @@ class JobRunner:
         task = self.__job_log.get_task(identifier, task_name)
         self.__remove_task_service(identifier, task['name'])
 
-        if self.__job_log.get_task_count(identifier, '__task_count_complete') == self.__job_log.get_task_count(identifier, '__task_count_total'):
+        if self.__job_log.get_task_count(identifier, '__task_count_complete') == self.__job_log.get_task_count(
+                identifier, '__task_count_total'):
             self.__submit_job_results(identifier)
             self.__job_log.clear_job(identifier)
         else:
             # Run more jobs in the future, pass for now
             pass
+
+    def get_job_tasks(self, identifier: str):
+        """ Retrieve all tasks registered with the specified job
+
+        :param identifier: The unique job identifier
+        :return: A list of all the tasks
+        """
+        task_list_raw = self.__job_log.get_job(identifier)
+        task_list = json.loads(task_list_raw[b'tasks'])
+        return task_list
 
     def __run_tasks_from(self, identifier: str):
         """ THIS IS A STUB, IT NEEDS TO BE FLESHED OUT
@@ -103,11 +116,11 @@ class JobRunner:
         self.__job_log.set_task_id(identifier, task['task_name'], svc.id)
         self.__job_log.update_status(identifier, task['task_name'], 'RUNNING')
 
-    def __remove_task_service(self, identifier: str, task_name):
+    def __remove_task_service(self, identifier: str, task_name: str):
         """ Instruct the docker client to remove the task service
 
         :param identifier: The unique job identifier
-        :param task: The task from the job log to remove
+        :param task_name: The task from the job log to remove
         """
         task = self.__job_log.get_task(identifier, task_name)
         svc = self.__docker.services.get(task['__task_id'])

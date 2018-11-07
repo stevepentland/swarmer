@@ -89,7 +89,7 @@ async def get_job_status(request, identifier):
     :param request: The incoming HTTP request
     :param identifier: The unique job identifier
     """
-    pass
+    return json(job_runner.get_job_tasks(identifier))
 
 
 @app.post('/result/<identifier:string>')

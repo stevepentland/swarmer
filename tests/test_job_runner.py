@@ -1,14 +1,11 @@
 from unittest.mock import call
 import docker
-import pytest
 import ulid
 
 from db import JobLog
 from jobs import JobRunner
 from models import RunnerConfig
 from docker.types.services import RestartPolicy
-from docker.client import ServiceCollection
-
 cfg = RunnerConfig('swarmer', '1234')
 
 
