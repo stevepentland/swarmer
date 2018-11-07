@@ -102,7 +102,8 @@ class JobRunner:
         # Build the docker service spec and fire it
         # TODO: Check that it may actually be better to set all of these args as environment vars
         policy = RestartPolicy(condition='none')
-        svc = self.__docker.services.create(image.decode('utf-8'), args=run_args, restart_policy=policy)
+        svc = self.__docker.services.create(image.decode('utf-8'), args=run_args, restart_policy=policy,
+                                            name='{id}-{name}'.format(id=identifier, name=task['task_name']))
         # spec = docker.types.ContainerSpec(image.decode('utf-8'), args=run_args,)
         # template = docker.types.TaskTemplate(spec, restart_policy='none')
         # svc_id = self.__docker.create_service(

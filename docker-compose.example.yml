@@ -1,3 +1,6 @@
+# Copy this example file, removing .example from the name
+# and you have your stack! Just change to the image name
+# you are using and go
 version: '3'
 services:
   swarmer:
