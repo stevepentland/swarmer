@@ -31,10 +31,8 @@ class JobLog:
                 'Can not find item with identifier: {id}'.format(id=identifier))
 
         task_dict = {'tasks': json.dumps([{
-            'args': t['task_args'], 'status': 'off', 'result': 'none', 'name': t['task_name']} for t in tasks])}
-        task_dict['__task_count_total'] = len(tasks)
-        task_dict['__task_count_started'] = 0
-        task_dict['__task_count_complete'] = 0
+            'args': t['task_args'], 'status': 'off', 'result': 'none', 'name': t['task_name']} for t in tasks]),
+            '__task_count_total': len(tasks), '__task_count_started': 0, '__task_count_complete': 0}
 
         self.__redis.hmset(identifier, task_dict)
 

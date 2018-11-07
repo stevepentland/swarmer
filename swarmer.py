@@ -3,7 +3,7 @@ import os
 import redis
 from docker import Client
 from sanic import Sanic
-from sanic.response import json, text
+from sanic.response import json
 
 from db import JobLog
 from jobs import JobRunner
@@ -33,10 +33,10 @@ def _create_docker_client():
 
 
 app = Sanic()
-redis = _create_redis()
+store = _create_redis()
 docker_client = _create_docker_client()
 
-job_log = JobLog(redis)
+job_log = JobLog(store)
 runner_cfg = RunnerConfig.from_environ()
 job_runner = JobRunner(job_log, docker_client, runner_cfg)
 
@@ -53,8 +53,9 @@ async def submit_job(request):
 
     :param request: The incoming HTTP request
     """
-    # Create a new map and add the image and callback kvps
-    pass
+    req_param = request.json
+    identifier = job_runner.create_new_job(req_param['image_name'], req_param['callback_url'])
+    return json({'id': identifier})
 
 
 @app.post('/submit/<identifier:string>/tasks')
@@ -77,7 +78,8 @@ async def submit_job_task(request, identifier):
     :param request: The incoming HTTP request
     :param identifier: The unique job identifier
     """
-    pass
+    req_param = request.json
+    job_runner.add_tasks_to_job(identifier, req_param['tasks'])
 
 
 @app.get('/status/<identifier:string>')
@@ -94,6 +96,9 @@ async def get_job_status(request, identifier):
 async def report_result(request, identifier):
     """ Provides the reporting feed for runners
 
+    Note: This method is expected to be called from the
+    tasks that are run and not for external consumption
+    
     :param request: The original HTTP request
     :param identifier: The job identifier
     """
