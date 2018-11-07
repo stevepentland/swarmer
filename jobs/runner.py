@@ -3,10 +3,10 @@ import ulid
 
 from db.job_log import JobLog
 from models import RunnerConfig
-
+from docker.types import RestartPolicy
 
 class JobRunner:
-    def __init__(self, job_log: JobLog, client: docker.Client, config: RunnerConfig, max_queue_len=12):
+    def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, max_queue_len=12):
         self.__job_log = job_log
         self.__docker = client
         self.__config = config
@@ -77,7 +77,7 @@ class JobRunner:
     def __start_task(self, identifier, task):
         # Get the matching Job to obtain image
         job = self.__job_log.get_job(identifier)
-        image = job['__image']
+        image = job[b'__image']
 
         # Setup base args for reporting URL (this app)
         run_args = ['--report_url', self.__config.host,
@@ -88,17 +88,19 @@ class JobRunner:
 
         # Build the docker service spec and fire it
         # TODO: Check that it may actually be better to set all of these args as environment vars
-        spec = docker.types.ContainerSpec(image, args=run_args)
-        template = docker.types.TaskTemplate(spec, restart_policy='none')
-        svc_id = self.__docker.create_service(
-            template, name='{id}-{name}'.format(id=identifier, name=task['task_name']))
+        policy = RestartPolicy(condition='none')
+        svc = self.__docker.services.create(image.decode('utf-8'), args=run_args, restart_policy=policy)
+        # spec = docker.types.ContainerSpec(image.decode('utf-8'), args=run_args,)
+        # template = docker.types.TaskTemplate(spec, restart_policy='none')
+        # svc_id = self.__docker.create_service(
+        #     template, name='{id}-{name}'.format(id=identifier, name=task['task_name']))
 
         # Update the number of started tasks on the job
         self.__job_log.modify_task_count(identifier, '__task_count_started', 1)
 
         # TODO: These should use the redis pipeline in the future
         # Update the relevant fields in the tracking
-        self.__job_log.set_task_id(identifier, task['task_name'], svc_id)
+        self.__job_log.set_task_id(identifier, task['task_name'], svc.id)
         self.__job_log.update_status(identifier, task['task_name'], 'RUNNING')
 
     def __remove_task_service(self, identifier: str, task_name):
@@ -107,8 +109,9 @@ class JobRunner:
         :param identifier: The unique job identifier
         :param task: The task from the job log to remove
         """
-        self.__docker.remove_service(
-            '{id}-{name}'.format(id=identifier, name=task_name))
+        task = self.__job_log.get_task(identifier, task_name)
+        svc = self.__docker.services.get(task['__task_id'])
+        svc.remove()
 
     def __submit_job_results(self, identifier):
         # Get the entire job and submit back to the callback address

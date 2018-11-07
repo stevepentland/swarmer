@@ -1,0 +1,32 @@
+version: '3'
+services:
+  swarmer:
+    image: 'whatever-your-image-name-is'
+    depends_on:
+      - redis
+    environment:
+      - REDIS_TARGET=redis
+      - REDIS_PORT=6379
+      - RUNNER_HOST_NAME=swarmer
+      - RUNNER_PORT=8500
+    ports:
+      - "8500:8500"
+    deploy:
+      replicas: 3
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 10
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  redis:
+    image: 'redis:5'
+    expose:
+      - "6379"
+    volumes:
+      - redis-data:/data
+volumes:
+  redis-data:

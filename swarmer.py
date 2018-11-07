@@ -1,9 +1,9 @@
 import os
 
 import redis
-from docker import Client
+from docker import DockerClient
 from sanic import Sanic
-from sanic.response import json
+from sanic.response import json, HTTPResponse
 
 from db import JobLog
 from jobs import JobRunner
@@ -14,8 +14,7 @@ def _create_redis():
     """ Helper method to create the redis client """
     redis_host = os.environ['REDIS_TARGET']
     redis_port = os.environ['REDIS_PORT']
-    redis_db = os.environ['REDIS_DATABASE']
-    return redis.StrictRedis(host=redis_host, port=redis_port, db=redis_db)
+    return redis.StrictRedis(host=redis_host, port=redis_port)
 
 
 def _create_docker_client():
@@ -27,9 +26,9 @@ def _create_docker_client():
     # but for now I'll keep it since we expect to run from within
     # a docker image
     if not socket_path.startswith('unix://'):
-        socket_path = 'unix://{0}'.format(socket_path)
+        socket_path = 'unix://{path}'.format(path=socket_path)
 
-    return Client(base_url=socket_path)
+    return DockerClient(base_url=socket_path)
 
 
 app = Sanic()
@@ -80,6 +79,7 @@ async def submit_job_task(request, identifier):
     """
     req_param = request.json
     job_runner.add_tasks_to_job(identifier, req_param['tasks'])
+    return HTTPResponse()
 
 
 @app.get('/status/<identifier:string>')
@@ -98,8 +98,11 @@ async def report_result(request, identifier):
 
     Note: This method is expected to be called from the
     tasks that are run and not for external consumption
-    
+
     :param request: The original HTTP request
     :param identifier: The job identifier
     """
     pass
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8500, debug=True)

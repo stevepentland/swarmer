@@ -194,3 +194,5 @@ fabric.properties
 !.vscode/extensions.json
 
 # End of https://www.gitignore.io/api/jetbrains,visualstudiocode
+
+docker-compose.yml

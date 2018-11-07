@@ -6,8 +6,9 @@ autopep8==1.4.2
 certifi==2018.10.15
 chardet==3.0.4
 coverage==4.5.1
-docker-py==1.10.6
+docker==3.5.1
 docker-pycreds==0.3.0
+hiredis==0.2.0
 httptools==0.0.11
 idna==2.7
 isort==4.3.4

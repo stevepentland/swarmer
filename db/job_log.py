@@ -81,7 +81,7 @@ class JobLog:
         """
         return self.__get_task(identifier, task_name)
 
-    def set_task_id(self, identifier: str, task_name: str, task_id: dict):
+    def set_task_id(self, identifier: str, task_name: str, task_id: str):
         """ Set the docker service identifier for the task
 
         :param identifier: The unique job identifier
