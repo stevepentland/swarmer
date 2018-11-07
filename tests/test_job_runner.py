@@ -77,9 +77,9 @@ def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
 
     restart_policy = RestartPolicy(condition='none')
     service_calls = [call('an-image', args=['--report_url', 'swarmer', '--report_port', '1234', '--', 'a', 'b', 'c'],
-                          restart_policy=restart_policy),
+                          restart_policy=restart_policy, name='abc-one'),
                      call('an-image', args=['--report_url', 'swarmer', '--report_port', '1234', '--', 'd', 'e', 'f'],
-                          restart_policy=restart_policy)]
+                          restart_policy=restart_policy, name='abc-two')]
 
     update_status_calls = [
         call('abc', 'one', 'RUNNING'), call('abc', 'two', 'RUNNING')]
