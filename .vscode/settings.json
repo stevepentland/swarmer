@@ -1,7 +1,7 @@
 {
     "python.venvFolders": [
-        "~/.envs"
+        "~/envs"
     ],
     "python.terminal.activateEnvironment": true,
-    "python.pythonPath": "/home/steve/.envs/swarmer/bin/python"
+    "python.pythonPath": "/home/steve/envs/swarmer/bin/python"
 }

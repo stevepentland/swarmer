@@ -11,3 +11,4 @@ tasks within a job are complete, the complete set of results is returned.
 To run, this image requires a redis service to be available
 
 **More information coming soon**
+
