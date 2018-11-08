@@ -97,12 +97,24 @@ async def report_result(request, identifier):
     """ Provides the reporting feed for runners
 
     Note: This method is expected to be called from the
-    tasks that are run and not for external consumption
+    tasks that are run and not for external consumption.
+
+    The body of this request should contain the following elements:
+
+    task_name: the name of the task (str)
+    task_status: the status of the task [PASSED, FAILED, UNKNOWN] (str)
+    task_result: the output that was written to stdout (str)
 
     :param request: The original HTTP request
     :param identifier: The job identifier
     """
-    pass
+    req_param = request.json
+    job_runner.complete_task(identifier,
+                             req_param['task_name'],
+                             req_param['task_status'],
+                             req_param['task_result'])
+    return HTTPResponse()
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8500, debug=True)

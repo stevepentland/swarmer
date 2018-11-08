@@ -70,8 +70,15 @@ class JobLog:
         if not self.__redis.exists(identifier):
             raise ValueError(
                 'Can not find job with id: {id}'.format(id=identifier))
+        job = self.__redis.hgetall(identifier)
 
-        return self.__redis.hgetall(identifier)
+        def check_and_decode(value):
+            try:
+                return value.decode('utf-8')
+            except (ValueError, AttributeError):
+                return value
+
+        return {check_and_decode(k): check_and_decode(v) for k, v in job.items()}
 
     def get_task(self, identifier: str, task_name: str):
         """ Retrieve the status for an individual run in a job

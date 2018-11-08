@@ -6,6 +6,7 @@ from db import JobLog
 from jobs import JobRunner
 from models import RunnerConfig
 from docker.types.services import RestartPolicy
+
 cfg = RunnerConfig('swarmer', '1234')
 
 
@@ -43,7 +44,7 @@ def test_create_job(job_log_mock, docker_mock, mocker):
 
 
 subject_job = {
-    b'__image': b'an-image',
+    '__image': 'an-image',
     '__callback': 'www.example.com',
     '__task_count_total': 2,
     '__task_count_started': 0,
@@ -116,8 +117,11 @@ def test_complete_task(job_log_mock, docker_mock, mocker):
 
 @injection_wrapper
 def test_complete_final_task(job_log_mock, docker_mock, mocker):
+    import requests
+    mocker.patch.object(requests, 'post')
     job_log_mock.get_task = mocker.Mock(
         return_value={'name': 'test', 'args': ['a', 9, 'v'], '__task_id': '123456'})
+    job_log_mock.get_job = mocker.Mock(return_value={'__image': 'an-image', '__callback': 'www.example.com'})
     # We'll hit the completed branch now
     job_log_mock.get_task_count = mocker.Mock(return_value=1)
     subject = JobRunner(job_log_mock, docker_mock, cfg)
@@ -135,3 +139,4 @@ def test_complete_final_task(job_log_mock, docker_mock, mocker):
         'abc', '__task_count_total')]
     job_log_mock.get_task_count.assert_has_calls(count_query_calls)
     job_log_mock.clear_job.assert_called_once_with('abc')
+    requests.post.assert_called_once()

@@ -88,6 +88,7 @@ def test_update_result_raises(mocker):
 def test_get_job(mocker):
     r_mock = get_redis_mock(mocker)
     r_mock.exists = mocker.MagicMock(return_value=True)
+    r_mock.hgetall = mocker.Mock(return_value={b'__id': b'123', b'tasks': '[{"one": "two"}]'})
     subject = JobLog(r_mock)
     subject.get_job('abc')
     r_mock.exists.assert_called_once_with('abc')

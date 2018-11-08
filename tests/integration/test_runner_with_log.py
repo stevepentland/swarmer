@@ -67,7 +67,7 @@ def test_add_tasks_to_job(subject, redis_mock, docker_mock, mocker):
     redis_mock.hget = mocker.Mock(
         return_value=json.dumps([expected_task_1, expected_task_2]))
     redis_mock.hgetall = mocker.Mock(
-        return_value={b'__image': str.encode(image), '__callback': callback})
+        return_value={'__image': image, '__callback': callback})
     docker_mock.services.create = mocker.Mock(return_value=SvcMock(id='abc123'))
     tasks = [
         {'task_name': 'task1', 'task_args': ['--one', 'something', '-b']},

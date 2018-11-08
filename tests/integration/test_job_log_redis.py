@@ -24,8 +24,8 @@ class TestLiveJobLog:
         job_key = ulid.new().str
         TestLiveJobLog.job_log.add_job(job_key, 'an_image', 'www.example.com')
         actual = TestLiveJobLog.job_log.get_job(job_key)
-        assert actual == {b'__image': b'an_image',
-                          b'__callback': b'www.example.com'}
+        assert actual == {'__image': 'an_image',
+                          '__callback': 'www.example.com'}
         TestLiveJobLog.job_log.clear_job(job_key)
         with pytest.raises(ValueError):
             TestLiveJobLog.job_log.get_job(job_key) is None
@@ -37,8 +37,9 @@ class TestLiveJobLog:
                  {'task_name': 'second', 'task_args': [3, 4, 5]}]
         TestLiveJobLog.job_log.add_tasks(job_key, tasks)
         actual = TestLiveJobLog.job_log.get_job(job_key)
-        assert actual == {b'__callback': b'www.example.com', b'__image': b'an_image', b'__task_count_complete': b'0', b'__task_count_started': b'0', b'__task_count_total': b'2',
-                          b'tasks': b'[{"args": [1, 2, 3], "status": "off", "result": "none", "name": "first"}, {"args": [3, 4, 5], "status": "off", "result": "none", "name": "second"}]'}
+        assert actual == {'__callback': 'www.example.com', '__image': 'an_image', '__task_count_complete': '0',
+                          '__task_count_started': '0', '__task_count_total': '2',
+                          'tasks': '[{"args": [1, 2, 3], "status": "off", "result": "none", "name": "first"}, {"args": [3, 4, 5], "status": "off", "result": "none", "name": "second"}]'}
         TestLiveJobLog.job_log.clear_job(job_key)
         with pytest.raises(ValueError):
             TestLiveJobLog.job_log.get_job(job_key) is None

@@ -1,10 +1,12 @@
-import docker
-import ulid
 import json
+
+import docker
+import requests
+import ulid
+from docker.types import RestartPolicy
 
 from db.job_log import JobLog
 from models import RunnerConfig
-from docker.types import RestartPolicy
 
 
 class JobRunner:
@@ -90,7 +92,7 @@ class JobRunner:
     def __start_task(self, identifier, task):
         # Get the matching Job to obtain image
         job = self.__job_log.get_job(identifier)
-        image = job[b'__image']
+        image = job['__image']
 
         # Setup base args for reporting URL (this app)
         run_args = ['--report_url', self.__config.host,
@@ -102,7 +104,7 @@ class JobRunner:
         # Build the docker service spec and fire it
         # TODO: Check that it may actually be better to set all of these args as environment vars
         policy = RestartPolicy(condition='none')
-        svc = self.__docker.services.create(image.decode('utf-8'), args=run_args, restart_policy=policy,
+        svc = self.__docker.services.create(image, args=run_args, restart_policy=policy,
                                             name='{id}-{name}'.format(id=identifier, name=task['task_name']))
         # spec = docker.types.ContainerSpec(image.decode('utf-8'), args=run_args,)
         # template = docker.types.TaskTemplate(spec, restart_policy='none')
@@ -129,4 +131,6 @@ class JobRunner:
 
     def __submit_job_results(self, identifier):
         # Get the entire job and submit back to the callback address
+        job = self.__job_log.get_job(identifier)
+        requests.post(job['__callback'])
         pass
