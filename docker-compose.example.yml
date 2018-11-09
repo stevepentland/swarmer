@@ -15,7 +15,6 @@ services:
     ports:
       - "8500:8500"
     deploy:
-      replicas: 3
       placement:
         constraints:
           - node.role == manager
@@ -29,6 +28,10 @@ services:
     image: 'redis:5'
     expose:
       - "6379"
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
     volumes:
       - redis-data:/data
 volumes:
