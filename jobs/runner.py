@@ -35,13 +35,13 @@ class JobRunner:
         for task in tasks:
             self.__start_task(identifier, task)
 
-    def complete_task(self, identifier: str, task_name: str, status: str, result: str):
+    def complete_task(self, identifier: str, task_name: str, status: int, result: dict):
         """ Signal that a task run has been completed
 
         :param identifier: The unique job identifier
         :param task_name: The name of the individual task
-        :param status: The finished status of the task, such as PASSED, FAILED, etc
-        :param result: The output from the task
+        :param status: The exit status of the task
+        :param result: The output from the task as a dict with 'stdout' and 'stderr' fields where appropriate
         """
 
         self.__job_log.update_result(identifier, task_name, result)

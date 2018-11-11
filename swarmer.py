@@ -103,7 +103,9 @@ async def report_result(request, identifier):
 
     task_name: the name of the task (str)
     task_status: the exit status of the task (int)
-    task_result: the output that was written to stdout (str)
+    task_result: the output that was written to stdout as a JSON object with the following fields:
+        - stdout: the standard output stream contents, if any (str)
+        - stderr: the standard error stream contents, if any (str)
 
     :param request: The original HTTP request
     :param identifier: The job identifier
