@@ -31,17 +31,17 @@ class JobLog:
                 'Can not find item with identifier: {id}'.format(id=identifier))
 
         task_dict = {'tasks': json.dumps([{
-            'args': t['task_args'], 'status': 'off', 'result': 'none', 'name': t['task_name']} for t in tasks]),
+            'args': t['task_args'], 'status': 500, 'result': 'none', 'name': t['task_name']} for t in tasks]),
             '__task_count_total': len(tasks), '__task_count_started': 0, '__task_count_complete': 0}
 
         self.__redis.hmset(identifier, task_dict)
 
-    def update_status(self, identifier: str, task_name: str, status: str):
+    def update_status(self, identifier: str, task_name: str, status: int):
         """ Update the status of a run
 
         :param identifier: The unique job identifier
         :param task_name: The individual task name to update the status of
-        :param status: The status of the task, as a JSON encoded object string
+        :param status: The exit status of the task
         """
         task = self.__get_task(identifier, task_name)
         task['status'] = status
@@ -87,6 +87,15 @@ class JobLog:
         :param task_name: The name of the individual job
         """
         return self.__get_task(identifier, task_name)
+
+    def get_tasks(self, identifier: str):
+        """ Get the list of tasks for the specified job
+
+        :param identifier: The unique job identifier
+
+        :returns: The list of all tasks related to the specified job
+        """
+        return self.__get_task_list(identifier)
 
     def set_task_id(self, identifier: str, task_name: str, task_id: str):
         """ Set the docker service identifier for the task

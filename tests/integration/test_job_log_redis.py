@@ -39,7 +39,7 @@ class TestLiveJobLog:
         actual = TestLiveJobLog.job_log.get_job(job_key)
         assert actual == {'__callback': 'www.example.com', '__image': 'an_image', '__task_count_complete': '0',
                           '__task_count_started': '0', '__task_count_total': '2',
-                          'tasks': '[{"args": [1, 2, 3], "status": "off", "result": "none", "name": "first"}, {"args": [3, 4, 5], "status": "off", "result": "none", "name": "second"}]'}
+                          'tasks': '[{"args": [1, 2, 3], "status": 500, "result": "none", "name": "first"}, {"args": [3, 4, 5], "status": 500, "result": "none", "name": "second"}]'}
         TestLiveJobLog.job_log.clear_job(job_key)
         with pytest.raises(ValueError):
             TestLiveJobLog.job_log.get_job(job_key) is None
@@ -49,10 +49,10 @@ class TestLiveJobLog:
         TestLiveJobLog.job_log.add_job(job_key, 'an_image', 'www.example.com')
         tasks = [{'task_name': 'first', 'task_args': [1, 2, 3]}]
         TestLiveJobLog.job_log.add_tasks(job_key, tasks)
-        TestLiveJobLog.job_log.update_status(job_key, 'first', 'DONE')
+        TestLiveJobLog.job_log.update_status(job_key, 'first', 1)
         actual = TestLiveJobLog.job_log.get_task(job_key, 'first')
         assert actual == {'args': [1, 2, 3], 'name': 'first',
-                          'result': 'none', 'status': 'DONE'}
+                          'result': 'none', 'status': 1}
 
     def test_update_result(self):
         job_key = ulid.new().str
@@ -63,7 +63,7 @@ class TestLiveJobLog:
             job_key, 'first', 'This is some text value')
         actual = TestLiveJobLog.job_log.get_task(job_key, 'first')
         assert actual == {'args': [1, 2, 3], 'name': 'first',
-                          'result': 'This is some text value', 'status': 'off'}
+                          'result': 'This is some text value', 'status': 500}
 
     @pytest.mark.parametrize('name,incr,expected', [
         ('__task_count_started', 1, 1),

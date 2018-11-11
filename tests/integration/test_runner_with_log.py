@@ -53,13 +53,13 @@ def test_add_tasks_to_job(subject, redis_mock, docker_mock, mocker):
     image, callback = 'some-image', 'www.example.com'
     expected_task_1 = {
         'args': ['--one', 'something', '-b'],
-        'status': 'off',
+        'status': 500,
         'result': 'none',
         'name': 'task1'
     }
     expected_task_2 = {
         'args': ['--one', 'another', '-v'],
-        'status': 'off',
+        'status': 500,
         'result': 'none',
         'name': 'task2'
     }

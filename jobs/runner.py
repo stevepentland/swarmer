@@ -87,6 +87,10 @@ class JobRunner:
         # # Don't run more if we're already maxed out
         # if job['__task_count_started'] >= self.__queue_len:
         #     return
+        # def startable(t): return t['status'] == 'off'
+        #
+        # current_tasks = self.__job_log.get_tasks(identifier)
+        # next_up
         pass
 
     def __start_task(self, identifier, task):

@@ -102,7 +102,7 @@ async def report_result(request, identifier):
     The body of this request should contain the following elements:
 
     task_name: the name of the task (str)
-    task_status: the status of the task [PASSED, FAILED, UNKNOWN] (str)
+    task_status: the exit status of the task (int)
     task_result: the output that was written to stdout (str)
 
     :param request: The original HTTP request
