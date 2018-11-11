@@ -6,25 +6,16 @@
 jobs:
 
 - job: 'Test'
-  resources:
-    containers:
-      - container: redis
-        image: redis:5
-        options: -p 6379:6379
   pool:
     vmImage: 'Ubuntu 16.04'
   strategy:
     matrix:
       Python36:
         python.version: '3.6'
-        containerResource: redis
       Python37:
         python.version: '3.7'
-        containerResource: redis
     maxParallel: 4
-  variables:
-    TEST_INCLUDE_REDIS: 'true'
-    
+
   steps:
   - task: UsePythonVersion@0
     inputs:
