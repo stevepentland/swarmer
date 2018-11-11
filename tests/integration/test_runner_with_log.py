@@ -54,13 +54,13 @@ def test_add_tasks_to_job(subject, redis_mock, docker_mock, mocker):
     expected_task_1 = {
         'args': ['--one', 'something', '-b'],
         'status': 500,
-        'result': 'none',
+        'result': {'stdout': None, 'stderr': None},
         'name': 'task1'
     }
     expected_task_2 = {
         'args': ['--one', 'another', '-v'],
         'status': 500,
-        'result': 'none',
+        'result': {'stdout': None, 'stderr': None},
         'name': 'task2'
     }
     redis_mock.exists = mocker.Mock(return_value=True)

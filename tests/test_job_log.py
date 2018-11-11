@@ -28,7 +28,7 @@ def test_task(mocker):
         'task_name': 'two', 'task_args': [2, 1, 0]}])
     r_mock.exists.assert_called_once_with('abc')
     r_mock.hmset.assert_called_once_with('abc', {
-        'tasks': '[{"args": [0, 1, 2], "status": 500, "result": "none", "name": "one"}, {"args": [2, 1, 0], "status": 500, "result": "none", "name": "two"}]',
+        'tasks': '[{"args": [0, 1, 2], "status": 500, "result": {"stdout": null, "stderr": null}, "name": "one"}, {"args": [2, 1, 0], "status": 500, "result": {"stdout": null, "stderr": null}, "name": "two"}]',
         '__task_count_total': 2, '__task_count_started': 0, '__task_count_complete': 0})
 
 
@@ -70,13 +70,13 @@ def test_update_result(mocker):
     r_mock.hget = mocker.MagicMock(
         return_value='[{"name": "def", "result": "none"}]')
     subject = JobLog(r_mock)
-    subject.update_result('abc', 'def', 'FAILED')
+    subject.update_result('abc', 'def', {'stdout': None, 'stderr': 'Something went wrong'})
     exists_calls = [call('abc', 'tasks')]
     r_mock.hexists.assert_has_calls(exists_calls * 2)
     r_mock.hget.assert_has_calls(exists_calls * 2)
     r_mock.hmset.assert_not_called()
     r_mock.hset.assert_called_once_with(
-        'abc', 'tasks', '[{"name": "def", "result": "FAILED"}]')
+        'abc', 'tasks', '[{"name": "def", "result": {"stdout": null, "stderr": "Something went wrong"}}]')
 
 
 def test_update_result_raises(mocker):
@@ -84,7 +84,7 @@ def test_update_result_raises(mocker):
     r_mock.hexists = mocker.MagicMock(return_value=False)
     subject = JobLog(r_mock)
     with pytest.raises(ValueError):
-        subject.update_result('abc', 'def', 'PASSED')
+        subject.update_result('abc', 'def', {'stdout': None, 'stderr': 'Something went wrong'})
 
 
 def test_get_job(mocker):

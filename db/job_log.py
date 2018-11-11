@@ -31,7 +31,7 @@ class JobLog:
                 'Can not find item with identifier: {id}'.format(id=identifier))
 
         task_dict = {'tasks': json.dumps([{
-            'args': t['task_args'], 'status': 500, 'result': 'none', 'name': t['task_name']} for t in tasks]),
+            'args': t['task_args'], 'status': 500, 'result': {'stdout': None, 'stderr': None}, 'name': t['task_name']} for t in tasks]),
             '__task_count_total': len(tasks), '__task_count_started': 0, '__task_count_complete': 0}
 
         self.__redis.hmset(identifier, task_dict)
@@ -49,12 +49,12 @@ class JobLog:
         update = [task if t['name'] == task['name'] else t for t in task_list]
         self.__redis.hset(identifier, 'tasks', json.dumps(update))
 
-    def update_result(self, identifier: str, task_name: str, result: str):
+    def update_result(self, identifier: str, task_name: str, result: dict):
         """ Update the result of a task run
 
         :param identifier: The unique job identifier
         :param task_name: The individual task name
-        :param result: The string encoded task result
+        :param result: A dict with the stdout and stderr output, if any was present
         """
         task = self.__get_task(identifier, task_name)
         task['result'] = result
