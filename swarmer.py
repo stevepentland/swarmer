@@ -120,3 +120,9 @@ async def report_result(request, identifier):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8500, debug=True)
+
+
+__author__ = 'Steve Pentland'
+__version__ = '0.1.0'
+__license__ = 'MIT'
+__maintainer__ = 'Steve Pentland'
