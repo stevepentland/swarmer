@@ -9,5 +9,5 @@ LICENSE
 README.md
 .pytest_cache/
 .coverage
-azure-pipelines.yml
 docker-compose.example.yml
+.travis.yml
