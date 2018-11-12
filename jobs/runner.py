@@ -68,7 +68,7 @@ class JobRunner:
         :return: A list of all the tasks
         """
         task_list_raw = self.__job_log.get_job(identifier)
-        task_list = json.loads(task_list_raw[b'tasks'])
+        task_list = json.loads(task_list_raw['tasks'])
         return task_list
 
     def __run_tasks_from(self, identifier: str):

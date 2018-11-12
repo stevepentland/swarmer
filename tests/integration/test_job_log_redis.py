@@ -25,10 +25,12 @@ class TestLiveJobLog:
         TestLiveJobLog.job_log.add_job(job_key, 'an_image', 'www.example.com')
         actual = TestLiveJobLog.job_log.get_job(job_key)
         assert actual == {'__image': 'an_image',
-                          '__callback': 'www.example.com'}
+                          '__callback': 'www.example.com',
+                          'tasks': '[]'}
         TestLiveJobLog.job_log.clear_job(job_key)
         with pytest.raises(ValueError):
             TestLiveJobLog.job_log.get_job(job_key) is None
+
 
     def test_add_tasks(self):
         job_key = ulid.new().str

@@ -1,4 +1,7 @@
-# swarmer
+# Swarmer
+[![Build Status](https://travis-ci.com/stevepentland/swarmer.svg?branch=master)](https://travis-ci.com/stevepentland/swarmer)
+
+
 Python application and API to run services from within a docker swarm
 
 # How it works
