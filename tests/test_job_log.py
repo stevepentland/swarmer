@@ -15,7 +15,7 @@ def test_create(mocker):
     identifier = 'abc'
     image = 'image'
     callback = 'www.callback.com'
-    expected_set = {'__image': image, '__callback': callback}
+    expected_set = {'__image': image, '__callback': callback, 'tasks': []}
     subject.add_job(identifier, image, callback)
     r_mock.hmset.assert_called_once_with(identifier, expected_set)
 

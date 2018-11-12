@@ -40,7 +40,7 @@ def test_integrated_create_job(subject, redis_mock, docker_mock, mocker):
     uid = ulid.from_str(identifier)
     assert uid is not None and uid.str == identifier
     redis_mock.hmset.assert_called_once_with(
-        identifier, {'__image': 'some-image', '__callback': 'www.example.com'})
+        identifier, {'__image': 'some-image', '__callback': 'www.example.com', 'tasks': []})
 
 
 class SvcMock:
@@ -67,7 +67,7 @@ def test_add_tasks_to_job(subject, redis_mock, docker_mock, mocker):
     redis_mock.hget = mocker.Mock(
         return_value=json.dumps([expected_task_1, expected_task_2]))
     redis_mock.hgetall = mocker.Mock(
-        return_value={'__image': image, '__callback': callback})
+        return_value={'__image': image, '__callback': callback, 'tasks': '[]'})
     docker_mock.services.create = mocker.Mock(return_value=SvcMock(id='abc123'))
     tasks = [
         {'task_name': 'task1', 'task_args': ['--one', 'something', '-b']},
@@ -82,7 +82,7 @@ def test_add_tasks_to_job(subject, redis_mock, docker_mock, mocker):
     identifier = subject.create_new_job(image, callback)
     expected_exists_calls = [call(identifier)] * 3
     expected_hmset_calls = [call(identifier, {
-        '__image': image, '__callback': callback}), call(identifier, expected_set)]
+        '__image': image, '__callback': callback, 'tasks': []}), call(identifier, expected_set)]
     subject.add_tasks_to_job(identifier, tasks)
     redis_mock.exists.assert_has_calls(expected_exists_calls)
     redis_mock.hmset.assert_has_calls(expected_hmset_calls)

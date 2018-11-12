@@ -16,7 +16,7 @@ class JobLog:
         :param image_name: The name of the image that is used to run each job
         :param callback: The URL to POST back all results
         """
-        initial_state = {'__image': image_name, '__callback': callback}
+        initial_state = {'__image': image_name, '__callback': callback, 'tasks': []}
         self.__redis.hmset(identifier, initial_state)
 
     def add_tasks(self, identifier: str, tasks: list):
