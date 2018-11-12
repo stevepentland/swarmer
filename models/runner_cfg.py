@@ -7,9 +7,10 @@ class RunnerConfig:
     data from the initializer or from the environment.
     """
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, network):
         self._host = host
         self._port = port
+        self._network = network
 
     @classmethod
     def from_environ(cls):
@@ -20,7 +21,8 @@ class RunnerConfig:
         being the port that will be used to recieve requests.
         """
         cfg = cls(os.environ['RUNNER_HOST_NAME'],
-                  os.environ['RUNNER_PORT'])
+                  os.environ['RUNNER_PORT'],
+                  os.environ['RUNNER_NETWORK'])
         return cfg
 
     @property
@@ -38,3 +40,11 @@ class RunnerConfig:
     @port.setter
     def port(self, value):
         self._port = value
+
+    @property
+    def network(self):
+        return self._network
+
+    @network.setter
+    def network(self, value):
+        self._network = value

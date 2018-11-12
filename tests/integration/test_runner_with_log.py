@@ -13,7 +13,7 @@ def injection_wrapper(f):
     def wrapper(mocker):
         redis_mock = get_redis_mock(mocker)
         job_log = JobLog(redis_mock)
-        cfg = build_default_config(mocker)
+        cfg = build_default_config()
         docker_mock = get_docker_mock(mocker)
         subject = JobRunner(job_log, docker_mock, cfg)
         return f(subject, redis_mock, docker_mock, mocker)
@@ -29,8 +29,8 @@ def get_docker_mock(mocker):
     return mocker.Mock(spec=DockerClient)
 
 
-def build_default_config(mocker):
-    return RunnerConfig('swarmer', '8500')
+def build_default_config():
+    return RunnerConfig('swarmer', '8500', 'overlay')
 
 
 @injection_wrapper

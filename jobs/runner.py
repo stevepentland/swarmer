@@ -98,17 +98,22 @@ class JobRunner:
         job = self.__job_log.get_job(identifier)
         image = job['__image']
 
-        # Setup base args for reporting URL (this app)
-        run_args = ['--report_url', self.__config.host,
-                    '--report_port', self.__config.port,
-                    '--']
-        # Append the remaining task args
-        run_args += task['task_args']
+        # Build the environment variables we will be sending to the task
+        run_env = [
+            'SWARMER_ADDRESS={addr}'.format(addr=self.__config.host),
+            'SWARMER_PORT={port}'.format(port=self.__config.port),
+            'TASK_NAME={task}'.format(task=task['task_name']),
+            'SWARMER_JOB_ID={ident}'.format(ident=identifier)
+        ]
+
+        if any(task['task_args']):
+            run_env += ['RUN_ARGS={args}'.format(args=','.join([str(a) for a in task['task_args']]))]
 
         # Build the docker service spec and fire it
         # TODO: Check that it may actually be better to set all of these args as environment vars
         policy = RestartPolicy(condition='none')
-        svc = self.__docker.services.create(image, args=run_args, restart_policy=policy,
+        svc = self.__docker.services.create(image, env=run_env, restart_policy=policy,
+                                            networks=[self.__config.network],
                                             name='{id}-{name}'.format(id=identifier, name=task['task_name']))
         # spec = docker.types.ContainerSpec(image.decode('utf-8'), args=run_args,)
         # template = docker.types.TaskTemplate(spec, restart_policy='none')

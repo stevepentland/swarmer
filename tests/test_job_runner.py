@@ -7,7 +7,7 @@ from jobs import JobRunner
 from models import RunnerConfig
 from docker.types.services import RestartPolicy
 
-cfg = RunnerConfig('swarmer', '1234')
+cfg = RunnerConfig('swarmer', '1234', 'overlay')
 
 
 def injection_wrapper(f):
@@ -77,10 +77,12 @@ def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
     job_log_mock.add_tasks.assert_called_once_with('abc', call_tasks)
 
     restart_policy = RestartPolicy(condition='none')
-    service_calls = [call('an-image', args=['--report_url', 'swarmer', '--report_port', '1234', '--', 'a', 'b', 'c'],
-                          restart_policy=restart_policy, name='abc-one'),
-                     call('an-image', args=['--report_url', 'swarmer', '--report_port', '1234', '--', 'd', 'e', 'f'],
-                          restart_policy=restart_policy, name='abc-two')]
+    service_calls = [call('an-image',
+                          env=['SWARMER_ADDRESS=swarmer', 'SWARMER_PORT=1234', 'TASK_NAME=one', 'SWARMER_JOB_ID=abc',
+                               'RUN_ARGS=a,b,c'], name='abc-one', networks=['overlay'], restart_policy=restart_policy),
+                     call('an-image',
+                          env=['SWARMER_ADDRESS=swarmer', 'SWARMER_PORT=1234', 'TASK_NAME=two', 'SWARMER_JOB_ID=abc',
+                               'RUN_ARGS=d,e,f'], name='abc-two', networks=['overlay'], restart_policy=restart_policy)]
 
     update_status_calls = [
         call('abc', 'one', 'RUNNING'), call('abc', 'two', 'RUNNING')]
