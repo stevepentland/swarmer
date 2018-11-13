@@ -119,7 +119,11 @@ async def report_result(request, identifier):
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8500, debug=True)
+    import os
+    if not os.environ.get('SWARMER_PORT'):
+        os.environ['SWARMER_PORT'] = '8500'
+
+    app.run(host='0.0.0.0', port=os.environ['SWARMER_PORT'], debug=True)
 
 
 __author__ = 'Steve Pentland'

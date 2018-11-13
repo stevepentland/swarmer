@@ -100,8 +100,7 @@ class JobRunner:
 
         # Build the environment variables we will be sending to the task
         run_env = [
-            'SWARMER_ADDRESS={addr}'.format(addr=self.__config.host),
-            'SWARMER_PORT={port}'.format(port=self.__config.port),
+            'SWARMER_ADDRESS={addr}:{port}'.format(addr=self.__config.host, port=self.__config.port),
             'TASK_NAME={task}'.format(task=task['task_name']),
             'SWARMER_JOB_ID={ident}'.format(ident=identifier)
         ]

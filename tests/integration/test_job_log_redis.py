@@ -31,7 +31,6 @@ class TestLiveJobLog:
         with pytest.raises(ValueError):
             TestLiveJobLog.job_log.get_job(job_key) is None
 
-
     def test_add_tasks(self):
         job_key = ulid.new().str
         TestLiveJobLog.job_log.add_job(job_key, 'an_image', 'www.example.com')
