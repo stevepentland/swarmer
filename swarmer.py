@@ -128,6 +128,6 @@ if __name__ == "__main__":
     app.run(host='0.0.0.0', port=os.environ['SWARMER_PORT'], debug=True)
 
 __author__ = 'Steve Pentland'
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 __license__ = 'MIT'
 __maintainer__ = 'Steve Pentland'

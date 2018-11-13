@@ -156,8 +156,9 @@ class JobRunner:
     def __submit_job_results(self, identifier):
         # Get the entire job and submit back to the callback address
         job = self.__job_log.get_job(identifier)
-        self.__log_operation('Submitting results for job {i}, details:\n{j}'.format(i=identifier, j=json.dumps(job)))
-        requests.post(job['__callback'], data=job)
+        req_data = json.dumps(job)
+        self.__log_operation('Submitting results for job {i}, details:\n{j}'.format(i=identifier, j=req_data))
+        requests.post(job['__callback'], data=req_data)
         pass
 
     def __log_operation(self, message):
