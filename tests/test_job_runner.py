@@ -78,11 +78,13 @@ def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
 
     restart_policy = RestartPolicy(condition='none')
     service_calls = [call('an-image',
-                          env=['SWARMER_ADDRESS=swarmer:1234', 'TASK_NAME=one', 'SWARMER_JOB_ID=abc',
-                               'RUN_ARGS=a,b,c'], name='abc-one', networks=['overlay'], restart_policy=restart_policy),
+                          env=['SWARMER_ADDRESS=http://swarmer:1234/result/abc', 'TASK_NAME=one', 'SWARMER_JOB_ID=abc',
+                               'RUN_ARGS=a,b,c'], name='abc-one', networks=['overlay'],
+                          restart_policy=restart_policy),
                      call('an-image',
-                          env=['SWARMER_ADDRESS=swarmer:1234', 'TASK_NAME=two', 'SWARMER_JOB_ID=abc',
-                               'RUN_ARGS=d,e,f'], name='abc-two', networks=['overlay'], restart_policy=restart_policy)]
+                          env=['SWARMER_ADDRESS=http://swarmer:1234/result/abc', 'TASK_NAME=two', 'SWARMER_JOB_ID=abc',
+                               'RUN_ARGS=d,e,f'], name='abc-two', networks=['overlay'],
+                          restart_policy=restart_policy)]
 
     update_status_calls = [
         call('abc', 'one', 'RUNNING'), call('abc', 'two', 'RUNNING')]

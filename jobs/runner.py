@@ -100,7 +100,9 @@ class JobRunner:
 
         # Build the environment variables we will be sending to the task
         run_env = [
-            'SWARMER_ADDRESS={addr}:{port}'.format(addr=self.__config.host, port=self.__config.port),
+            'SWARMER_ADDRESS=http://{addr}:{port}/result/{ident}'.format(addr=self.__config.host,
+                                                                         port=self.__config.port,
+                                                                         ident=identifier),
             'TASK_NAME={task}'.format(task=task['task_name']),
             'SWARMER_JOB_ID={ident}'.format(ident=identifier)
         ]
@@ -140,5 +142,5 @@ class JobRunner:
     def __submit_job_results(self, identifier):
         # Get the entire job and submit back to the callback address
         job = self.__job_log.get_job(identifier)
-        requests.post(job['__callback'])
+        requests.post(job['__callback'], job)
         pass

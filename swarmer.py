@@ -127,6 +127,6 @@ if __name__ == "__main__":
 
 
 __author__ = 'Steve Pentland'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __license__ = 'MIT'
 __maintainer__ = 'Steve Pentland'
