@@ -161,4 +161,4 @@ class JobRunner:
         pass
 
     def __log_operation(self, message):
-        self.__logger('JobRunner: {msg}'.format(msg=message))
+        self.__logger.info('JobRunner: {msg}'.format(msg=message))
