@@ -7,16 +7,20 @@ from docker.types import RestartPolicy
 
 from db.job_log import JobLog
 from models import RunnerConfig
+from sanic.log import logger
 
 
 class JobRunner:
-    def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, max_queue_len=12):
+    def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, log, max_queue_len=12):
         self.__job_log = job_log
         self.__docker = client
         self.__config = config
         self.__queue_len = max_queue_len
+        self.__logger = log
 
     def create_new_job(self, image_name, callback):
+        self.__log_operation('Creating new job with image {img} and callback {cb}'.format(img=image_name, cb=callback))
+
         identifier = ulid.new().str
         self.__job_log.add_job(identifier, image_name, callback)
         return identifier
@@ -27,6 +31,8 @@ class JobRunner:
         :param identifier: The unique job identifier
         :param tasks: The collection of task objects to add
         """
+        self.__log_operation('Adding tasks to job {i}:\n{tl}'.format(i=identifier, tl=json.dumps(tasks)))
+
         self.__job_log.add_tasks(identifier, tasks)
         # TODO: queue max in next release
         # self.__run_tasks_from(identifier)
@@ -43,7 +49,9 @@ class JobRunner:
         :param status: The exit status of the task
         :param result: The output from the task as a dict with 'stdout' and 'stderr' fields where appropriate
         """
-
+        self.__log_operation(
+            'Completing task {tn} in job {i} with status {s} and result:\n{r}'.format(tn=task_name, i=identifier,
+                                                                                      s=status, r=json.dumps(result)))
         self.__job_log.update_result(identifier, task_name, result)
         self.__job_log.update_status(identifier, task_name, status)
         self.__job_log.modify_task_count(
@@ -67,6 +75,8 @@ class JobRunner:
         :param identifier: The unique job identifier
         :return: A list of all the tasks
         """
+        self.__log_operation('Getting tasks for job {i}'.format(i=identifier))
+
         task_list_raw = self.__job_log.get_job(identifier)
         task_list = json.loads(task_list_raw['tasks'])
         return task_list
@@ -95,6 +105,8 @@ class JobRunner:
 
     def __start_task(self, identifier, task):
         # Get the matching Job to obtain image
+        self.__log_operation('Starting a task for job {i}, task: {t}'.format(i=identifier, t=json.dumps(task)))
+
         job = self.__job_log.get_job(identifier)
         image = job['__image']
 
@@ -135,6 +147,8 @@ class JobRunner:
         :param identifier: The unique job identifier
         :param task_name: The task from the job log to remove
         """
+        self.__log_operation('Removing task {tn} from job {i}'.format(tn=task_name, i=identifier))
+
         task = self.__job_log.get_task(identifier, task_name)
         svc = self.__docker.services.get(task['__task_id'])
         svc.remove()
@@ -142,5 +156,9 @@ class JobRunner:
     def __submit_job_results(self, identifier):
         # Get the entire job and submit back to the callback address
         job = self.__job_log.get_job(identifier)
+        self.__log_operation('Submitting results for job {i}, details:\n{j}'.format(i=identifier, j=json.dumps(job)))
         requests.post(job['__callback'], job)
         pass
+
+    def __log_operation(self, message):
+        self.__logger('JobRunner: {msg}'.format(msg=message))

@@ -13,12 +13,14 @@ import redis
 import ulid
 
 from db import JobLog
+from sanic.log import logger
+from unittest.mock import Mock
 
 
 @pytest.mark.skipif(os.environ.get('TEST_INCLUDE_REDIS') is None, reason='requires local default redis to run')
 class TestLiveJobLog:
     database = redis.StrictRedis()
-    job_log = JobLog(database)
+    job_log = JobLog(database, Mock(spec=logger))
 
     def test_add_job_and_delete(self):
         job_key = ulid.new().str

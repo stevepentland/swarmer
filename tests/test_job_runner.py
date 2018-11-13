@@ -12,7 +12,7 @@ cfg = RunnerConfig('swarmer', '1234', 'overlay')
 
 def injection_wrapper(f):
     def wrapper(mocker):
-        return f(get_job_log_mock(mocker), get_docker_mock(mocker), mocker)
+        return f(get_job_log_mock(mocker), get_docker_mock(mocker), get_sanic_log_mock(mocker), mocker)
 
     return wrapper
 
@@ -30,12 +30,16 @@ def get_service_mock(mocker):
     return mocker.Mock(spec=Service)
 
 
+def get_sanic_log_mock(mocker):
+    from sanic.log import logger
+    return mocker.Mock(spec=logger)
+
 @injection_wrapper
-def test_create_job(job_log_mock, docker_mock, mocker):
+def test_create_job(job_log_mock, docker_mock, log_mock, mocker):
     identifier = ulid.new()
     mocker.patch.object(ulid, 'new')
     ulid.new = mocker.MagicMock(return_value=identifier)
-    subject = JobRunner(job_log_mock, docker_mock, cfg)
+    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
     result = subject.create_new_job('image', 'www.example.com')
     ulid.new.assert_called_once()
     job_log_mock.add_job.assert_called_once_with(
@@ -69,10 +73,10 @@ class SvcMock:
 
 
 @injection_wrapper
-def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
+def test_add_tasks_to_job(job_log_mock, docker_mock, log_mock, mocker):
     job_log_mock.get_job = mocker.Mock(return_value=subject_job)
     docker_mock.services.create = mocker.Mock(return_value=SvcMock(id='12345'))
-    subject = JobRunner(job_log_mock, docker_mock, cfg)
+    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
     subject.add_tasks_to_job('abc', call_tasks)
     job_log_mock.add_tasks.assert_called_once_with('abc', call_tasks)
 
@@ -97,13 +101,13 @@ def test_add_tasks_to_job(job_log_mock, docker_mock, mocker):
 
 
 @injection_wrapper
-def test_complete_task(job_log_mock, docker_mock, mocker):
+def test_complete_task(job_log_mock, docker_mock, log_mock, mocker):
     job_log_mock.get_task = mocker.Mock(
         return_value={'name': 'test', 'args': ['a', 9, 'v'], '__task_id': '123456'})
     # Not testing post-complete logic in this test
     job_log_mock.get_task_count = mocker.Mock(
         side_effect=lambda i, k: 1 if k == '__task_count_complete' else 2)
-    subject = JobRunner(job_log_mock, docker_mock, cfg)
+    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
     subject.complete_task('abc', 'test', 'PASSED', 'The test passed')
     job_log_mock.update_result.assert_called_once_with(
         'abc', 'test', 'The test passed')
@@ -120,7 +124,7 @@ def test_complete_task(job_log_mock, docker_mock, mocker):
 
 
 @injection_wrapper
-def test_complete_final_task(job_log_mock, docker_mock, mocker):
+def test_complete_final_task(job_log_mock, docker_mock, log_mock, mocker):
     import requests
     mocker.patch.object(requests, 'post')
     job_log_mock.get_task = mocker.Mock(
@@ -128,7 +132,7 @@ def test_complete_final_task(job_log_mock, docker_mock, mocker):
     job_log_mock.get_job = mocker.Mock(return_value={'__image': 'an-image', '__callback': 'www.example.com'})
     # We'll hit the completed branch now
     job_log_mock.get_task_count = mocker.Mock(return_value=1)
-    subject = JobRunner(job_log_mock, docker_mock, cfg)
+    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
     subject.complete_task('abc', 'test', 'PASSED', 'The test passed')
     job_log_mock.update_result.assert_called_once_with(
         'abc', 'test', 'The test passed')

@@ -3,6 +3,7 @@ import os
 import redis
 from docker import DockerClient
 from sanic import Sanic
+from sanic.log import logger
 from sanic.response import json, HTTPResponse
 
 from db import JobLog
@@ -35,9 +36,9 @@ app = Sanic()
 store = _create_redis()
 docker_client = _create_docker_client()
 
-job_log = JobLog(store)
+job_log = JobLog(store, logger)
 runner_cfg = RunnerConfig.from_environ()
-job_runner = JobRunner(job_log, docker_client, runner_cfg)
+job_runner = JobRunner(job_log, docker_client, runner_cfg, logger)
 
 
 @app.post('/submit')
@@ -120,13 +121,13 @@ async def report_result(request, identifier):
 
 if __name__ == "__main__":
     import os
+
     if not os.environ.get('SWARMER_PORT'):
         os.environ['SWARMER_PORT'] = '8500'
 
     app.run(host='0.0.0.0', port=os.environ['SWARMER_PORT'], debug=True)
 
-
 __author__ = 'Steve Pentland'
-__version__ = '0.1.1'
+__version__ = '0.2.0'
 __license__ = 'MIT'
 __maintainer__ = 'Steve Pentland'

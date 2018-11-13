@@ -6,8 +6,9 @@ class JobLog:
     """ The JobLog is responsible for handling the redis job tracking
     """
 
-    def __init__(self, redis: redis.StrictRedis):
-        self.__redis = redis
+    def __init__(self, rd: redis.StrictRedis, logger):
+        self.__redis = rd
+        self.__logger = logger
 
     def add_job(self, identifier: str, image_name: str, callback: str):
         """ Add a new job to the tracking database
@@ -16,6 +17,8 @@ class JobLog:
         :param image_name: The name of the image that is used to run each job
         :param callback: The URL to POST back all results
         """
+        self.__log_operation('Adding new job {i}'.format(i=identifier))
+
         initial_state = {'__image': image_name, '__callback': callback, 'tasks': []}
         self.__redis.hmset(identifier, initial_state)
 
@@ -26,12 +29,15 @@ class JobLog:
         :param identifier: The unique job identifier
         :param tasks: A list of task objects
         """
+        self.__log_operation('Adding tasks to job {i}:\n{t}'.format(i=identifier, t=json.dumps(tasks)))
+
         if not self.__redis.exists(identifier):
             raise ValueError(
                 'Can not find item with identifier: {id}'.format(id=identifier))
 
         task_dict = {'tasks': json.dumps([{
-            'args': t['task_args'], 'status': 500, 'result': {'stdout': None, 'stderr': None}, 'name': t['task_name']} for t in tasks]),
+            'args': t['task_args'], 'status': 500, 'result': {'stdout': None, 'stderr': None}, 'name': t['task_name']}
+            for t in tasks]),
             '__task_count_total': len(tasks), '__task_count_started': 0, '__task_count_complete': 0}
 
         self.__redis.hmset(identifier, task_dict)
@@ -43,6 +49,9 @@ class JobLog:
         :param task_name: The individual task name to update the status of
         :param status: The exit status of the task
         """
+        self.__log_operation(
+            'Updating status of task {tn} for job {i} with {s}'.format(tn=task_name, i=identifier, s=status))
+
         task = self.__get_task(identifier, task_name)
         task['status'] = status
         task_list = self.__get_task_list(identifier)
@@ -56,6 +65,8 @@ class JobLog:
         :param task_name: The individual task name
         :param result: A dict with the stdout and stderr output, if any was present
         """
+        self.__log_operation('Updating result of task {tn} for job {i} with {res}'.format(tn=task_name, i=identifier,
+                                                                                          res=json.dumps(result)))
         task = self.__get_task(identifier, task_name)
         task['result'] = result
         task_list = self.__get_task_list(identifier)
@@ -67,6 +78,7 @@ class JobLog:
 
         :param identifier: The unique job identifier
         """
+        self.__log_operation('Getting job {i}'.format(i=identifier))
         if not self.__redis.exists(identifier):
             raise ValueError(
                 'Can not find job with id: {id}'.format(id=identifier))
@@ -86,6 +98,8 @@ class JobLog:
         :param identifier: The unique job identifier
         :param task_name: The name of the individual job
         """
+        self.__log_operation('Getting task {tn} from job {i}'.format(tn=task_name, i=identifier))
+
         return self.__get_task(identifier, task_name)
 
     def get_tasks(self, identifier: str):
@@ -95,6 +109,8 @@ class JobLog:
 
         :returns: The list of all tasks related to the specified job
         """
+        self.__log_operation('Getting tasks for {i}'.format(i=identifier))
+
         return self.__get_task_list(identifier)
 
     def set_task_id(self, identifier: str, task_name: str, task_id: str):
@@ -104,6 +120,9 @@ class JobLog:
         :param task_name: The name of the individual task
         :param task_id: The id of the task service
         """
+        self.__log_operation(
+            'Setting task id {ti} for task {tn} for job {i}'.format(ti=task_id, tn=task_name, i=identifier))
+
         task = self.__get_task(identifier, task_name)
         task['__task_id'] = task_id
         task_list = self.__get_task_list(identifier)
@@ -115,6 +134,8 @@ class JobLog:
 
         :param identifier: The unique job identifier
         """
+        self.__log_operation('Clearing job {i}'.format(i=identifier))
+
         if not self.__redis.exists(identifier):
             raise ValueError(
                 'Can not find job with id: {id}'.format(id=identifier))
@@ -130,6 +151,8 @@ class JobLog:
 
         :returns: The new value after increment/decrement
         """
+        self.__log_operation('Updating task count for {i} by {m}'.format(i=identifier, m=modifier))
+
         self.__redis.hincrby(identifier, key, modifier)
 
     def get_task_count(self, identifier: str, key: str):
@@ -138,9 +161,12 @@ class JobLog:
         :param identifier: The unique job identifier
         :param key: The counter key (__task_count_started, __task_count_complete, or __task_count_total)
         """
+        self.__log_operation('Getting task count for {i}'.format(i=identifier))
+
         return self.__redis.hget(identifier, key)
 
     def __get_task(self, identifier, name):
+        self.__log_operation('Retrieving task {t} for {i}'.format(t=name, i=identifier))
         if not self.__redis.hexists(identifier, 'tasks'):
             raise ValueError(
                 'Unable to find job with identifier {id} that has any tasks'.format(id=identifier))
@@ -155,8 +181,13 @@ class JobLog:
         return val[0]
 
     def __get_task_list(self, identifier):
+        self.__log_operation('Retrieving task list for {ident}'.format(ident=identifier))
+
         if not self.__redis.hexists(identifier, 'tasks'):
             raise ValueError(
                 'Unable to find job with identifier {id} that has any tasks'.format(id=identifier))
 
         return json.loads(self.__redis.hget(identifier, 'tasks'))
+
+    def __log_operation(self, message: str):
+        self.__logger.info('JobLog: {msg}'.format(msg=message))

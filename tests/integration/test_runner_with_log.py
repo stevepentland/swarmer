@@ -7,15 +7,16 @@ from db import JobLog
 from jobs import JobRunner
 from models import RunnerConfig
 from unittest.mock import call
+from sanic.log import logger
 
 
 def injection_wrapper(f):
     def wrapper(mocker):
         redis_mock = get_redis_mock(mocker)
-        job_log = JobLog(redis_mock)
+        job_log = JobLog(redis_mock, get_sanic_log_mock(mocker))
         cfg = build_default_config()
         docker_mock = get_docker_mock(mocker)
-        subject = JobRunner(job_log, docker_mock, cfg)
+        subject = JobRunner(job_log, docker_mock, cfg, get_sanic_log_mock(mocker))
         return f(subject, redis_mock, docker_mock, mocker)
 
     return wrapper
@@ -23,6 +24,10 @@ def injection_wrapper(f):
 
 def get_redis_mock(mocker):
     return mocker.Mock(spec=StrictRedis)
+
+
+def get_sanic_log_mock(mocker):
+    return mocker.Mock(spec=logger)
 
 
 def get_docker_mock(mocker):
