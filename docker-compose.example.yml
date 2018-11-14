@@ -1,17 +1,22 @@
 # Copy this example file, removing .example from the name
 # and you have your stack! Just change to the image name
 # you are using and go
-version: '3'
+# Copy this example file, changing any values that you need
+# for your particular setup and you're good to go
+version: '3.5'
 services:
   swarmer:
-    image: 'whatever-your-image-name-is'
+    image: 'stevepentland/swarmer:latest'
     depends_on:
       - redis
+    networks:
+      - swarmer-net
     environment:
       - REDIS_TARGET=redis
       - REDIS_PORT=6379
       - RUNNER_HOST_NAME=swarmer
       - RUNNER_PORT=8500
+      - RUNNER_NETWORK=swarmer-net
     ports:
       - "8500:8500"
     deploy:
@@ -26,8 +31,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
   redis:
     image: 'redis:5'
-    expose:
-      - "6379"
+    networks:
+      - swarmer-net
     deploy:
       placement:
         constraints:
@@ -36,3 +41,7 @@ services:
       - redis-data:/data
 volumes:
   redis-data:
+networks:
+  swarmer-net:
+    name: swarmer-net
+    driver: overlay
