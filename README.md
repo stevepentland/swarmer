@@ -49,4 +49,55 @@ tasks to your job.
 
 ## Adding tasks
 
-To be completed soon...
+Once your job has been created, you can submit a list of tasks to it. This is done via the
+`/submit/<identifier>/tasks` POST endpoint, where `identifier` is the id value you were
+given when the job was created. The body of this request should look like the following:
+
+```
+{
+  "tasks": [
+    {
+      "task_name": "<Name>",
+      "task_args": ["arg-one", "arg-two", ...]
+    },
+    ...
+  ]
+}
+```
+Once the tasks have been submitted, they will begin running immediately.
+
+## Checking the status of a job
+
+If you have a running job that you would like to check on, you can send
+a GET request to the `/status/<identifier>` resource, where `identifier`
+is the id value of your job.
+
+# Getting your results
+
+Once all the tasks for your job are complete, the URL you specified
+in the `callback_url` field will receive a POST request with the 
+collected results. The general format is:
+
+```json
+{
+  "__image": "your image",
+  "__callback_url": "your url",
+  "tasks": [
+    {
+      "name": "task name",
+      "status": 0,
+      "args": ["your", "args"],
+      "result": {
+        "stdout": "the output written to stdout",
+        "stderr": "the output written to stderr"
+      }
+    },
+    ...
+  ]
+}
+```
+
+For each task, the `status` field represents the exit
+status of the task process, while the `result` object
+contains the output that your task wrote to the two 
+output streams.
