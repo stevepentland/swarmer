@@ -1,11 +1,15 @@
-from db import JobLog
-import redis
-import pytest
 from unittest.mock import call
+
+import pytest
+import redis
 from sanic.log import logger
+
+from db import JobLog
+
 
 def get_redis_mock(mocker):
     return mocker.Mock(spec=redis.StrictRedis)
+
 
 def get_sanic_log_mock(mocker):
     return mocker.Mock(spec=logger)

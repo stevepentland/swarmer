@@ -1,25 +1,31 @@
 import json
+from datetime import timedelta, datetime
 
 import docker
 import requests
 import ulid
 from docker.types import RestartPolicy
 
+from auth.authfactory import AuthenticationFactory
 from db.job_log import JobLog
 from models import RunnerConfig
-from sanic.log import logger
 
 
 class JobRunner:
-    def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, log, max_queue_len=12):
+    LOGIN_DELTA = timedelta(minutes=10)
+
+    def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, log,
+                 authenticator: AuthenticationFactory = None, max_queue_len=12):
         self.__job_log = job_log
         self.__docker = client
         self.__config = config
         self.__queue_len = max_queue_len
+        self.__authenticator = authenticator if authenticator is not None and authenticator.has_providers else None
         self.__logger = log
+        self.__last_login = None
 
     def create_new_job(self, image_name, callback):
-        self.__log_operation('Creating new job with image {img} and callback {cb}'.format(img=image_name, cb=callback))
+        self._log_operation('Creating new job with image {img} and callback {cb}'.format(img=image_name, cb=callback))
 
         identifier = ulid.new().str
         self.__job_log.add_job(identifier, image_name, callback)
@@ -31,7 +37,7 @@ class JobRunner:
         :param identifier: The unique job identifier
         :param tasks: The collection of task objects to add
         """
-        self.__log_operation('Adding tasks to job {i}:\n{tl}'.format(i=identifier, tl=json.dumps(tasks)))
+        self._log_operation('Adding tasks to job {i}:\n{tl}'.format(i=identifier, tl=json.dumps(tasks)))
 
         self.__job_log.add_tasks(identifier, tasks)
         # TODO: queue max in next release
@@ -39,7 +45,7 @@ class JobRunner:
 
         # Just run all of the tasks for initial release
         for task in tasks:
-            self.__start_task(identifier, task)
+            self._start_task(identifier, task)
 
     def complete_task(self, identifier: str, task_name: str, status: int, result: dict):
         """ Signal that a task run has been completed
@@ -49,7 +55,7 @@ class JobRunner:
         :param status: The exit status of the task
         :param result: The output from the task as a dict with 'stdout' and 'stderr' fields where appropriate
         """
-        self.__log_operation(
+        self._log_operation(
             'Completing task {tn} in job {i} with status {s} and result:\n{r}'.format(tn=task_name, i=identifier,
                                                                                       s=status, r=json.dumps(result)))
         self.__job_log.update_result(identifier, task_name, result)
@@ -59,11 +65,11 @@ class JobRunner:
         self.__job_log.modify_task_count(
             identifier, '__task_count_complete', 1)
         task = self.__job_log.get_task(identifier, task_name)
-        self.__remove_task_service(identifier, task['name'])
+        self._remove_task_service(identifier, task['name'])
 
         if self.__job_log.get_task_count(identifier, '__task_count_complete') == self.__job_log.get_task_count(
                 identifier, '__task_count_total'):
-            self.__submit_job_results(identifier)
+            self._submit_job_results(identifier)
             self.__job_log.clear_job(identifier)
         else:
             # Run more jobs in the future, pass for now
@@ -75,13 +81,24 @@ class JobRunner:
         :param identifier: The unique job identifier
         :return: A list of all the tasks
         """
-        self.__log_operation('Getting tasks for job {i}'.format(i=identifier))
+        self._log_operation('Getting tasks for job {i}'.format(i=identifier))
 
         task_list_raw = self.__job_log.get_job(identifier)
         task_list = json.loads(task_list_raw['tasks'])
         return task_list
 
-    def __run_tasks_from(self, identifier: str):
+    @property
+    def _obtain_client(self):
+        if self.__authenticator is None:
+            return self.__docker
+
+        if self.__last_login is None or datetime.now() - self.__last_login > self.LOGIN_DELTA:
+            self.__authenticator.perform_logins(self.__docker)
+            self.__last_login = datetime.now()
+
+        return self.__docker
+
+    def _run_tasks_from(self, identifier: str):
         """ THIS IS A STUB, IT NEEDS TO BE FLESHED OUT
 
         This will be used to run remaining tasks once the max queue length is
@@ -103,9 +120,9 @@ class JobRunner:
         # next_up
         pass
 
-    def __start_task(self, identifier, task):
+    def _start_task(self, identifier, task):
         # Get the matching Job to obtain image
-        self.__log_operation('Starting a task for job {i}, task: {t}'.format(i=identifier, t=json.dumps(task)))
+        self._log_operation('Starting a task for job {i}, task: {t}'.format(i=identifier, t=json.dumps(task)))
 
         job = self.__job_log.get_job(identifier)
         image = job['__image']
@@ -125,7 +142,7 @@ class JobRunner:
         # Build the docker service spec and fire it
         # TODO: Check that it may actually be better to set all of these args as environment vars
         policy = RestartPolicy(condition='none')
-        svc = self.__docker.services.create(image, env=run_env, restart_policy=policy,
+        svc = self._obtain_client.services.create(image, env=run_env, restart_policy=policy,
                                             networks=[self.__config.network],
                                             name='{id}-{name}'.format(id=identifier, name=task['task_name']))
         # spec = docker.types.ContainerSpec(image.decode('utf-8'), args=run_args,)
@@ -141,25 +158,26 @@ class JobRunner:
         self.__job_log.set_task_id(identifier, task['task_name'], svc.id)
         self.__job_log.update_status(identifier, task['task_name'], 'RUNNING')
 
-    def __remove_task_service(self, identifier: str, task_name: str):
+    def _remove_task_service(self, identifier: str, task_name: str):
         """ Instruct the docker client to remove the task service
 
         :param identifier: The unique job identifier
         :param task_name: The task from the job log to remove
         """
-        self.__log_operation('Removing task {tn} from job {i}'.format(tn=task_name, i=identifier))
+        self._log_operation('Removing task {tn} from job {i}'.format(tn=task_name, i=identifier))
 
         task = self.__job_log.get_task(identifier, task_name)
+        # We don't need an authentication run for getting already created services
         svc = self.__docker.services.get(task['__task_id'])
         svc.remove()
 
-    def __submit_job_results(self, identifier):
+    def _submit_job_results(self, identifier):
         # Get the entire job and submit back to the callback address
         job = self.__job_log.get_job(identifier)
         tasks = json.loads(job['tasks'])
         job['tasks'] = tasks
-        self.__log_operation('Submitting results for job {i}, details:\n{j}'.format(i=identifier, j=json.dumps(job)))
+        self._log_operation('Submitting results for job {i}, details:\n{j}'.format(i=identifier, j=json.dumps(job)))
         requests.post(job['__callback'], json=job)
 
-    def __log_operation(self, message):
+    def _log_operation(self, message):
         self.__logger.info('JobRunner: {msg}'.format(msg=message))

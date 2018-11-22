@@ -1,8 +1,12 @@
 # Swarmer
 [![Build Status](https://travis-ci.com/stevepentland/swarmer.svg?branch=master)](https://travis-ci.com/stevepentland/swarmer)
 
-
 Python application and API to run services from within a docker swarm.
+
+# *NOTE*
+There have been some significant changes between versions 0.2.6 and version 0.3.0 that
+change the way swarmer is installed and works to provide authentication to private
+docker registries. This documentation will be updated soon to reflect that.
 
 # How it works
 The swarmer lives in a service inside a docker swarm. Once exposed, it offers an

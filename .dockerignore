@@ -3,7 +3,7 @@
 __pycache__/
 .git
 .gitignore
-Dockerfile
+dockerfiles/Dockerfile
 .dockerignore
 LICENSE
 README.md

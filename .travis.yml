@@ -1,12 +1,19 @@
-sudo: 'required'
+sudo: required
 services:
-  - 'docker'
+- docker
 language: python
 python:
-  - "3.7-dev"
+- 3.7-dev
 install:
-  - pip install -r requirements.txt
+- pip install -r requirements.txt
 script:
-  - pytest --cov=. -vv
+- pytest --cov=. -vv
 notifications:
   email: false
+deploy:
+  provider: pypi
+  user: 'stevepentland'
+  password:
+    secure: QRda5cSmGJRYxq78f4ZP51NWPNAohv0s10yO87RboYdXXlzLbnaTE8lDg3WS5KYQuoYIaZ8KsirmFnk1pks/Q5wXRoQQqHmY/vqMb4LQA+NKhRBVh/zW5WPbw54uyZCD/d03BQffz/W2r/x+Nc7Wkny0GC3TQEXn0b1ivGfnqMuRLVm2nELreJ+yw6pCQCe2WiuFHdarjtppuU+rnyZGfPXKqLzk9cVVTJRxaN8uPonKk+Kcy8JFMP5r8SztnvPV/THZPjV9sym1zuNYK0627l28/oQQ+IaOTHBuc47VQ3nKlfFRTfctKUqkacAkhzsh7Pnn8M9M2HumxmZOwHGDe/iPnNSicnEFnXgULiPrJF/dXMbUaYZ0/RB86dDmwZqTC6GRn4VwIZb35V0RmsJ+3uUmamDVv4vcRj5fwlzAXYLtsim1SDpcfWMobl5618X+6G0ZGXAzDxG+8stwhtTJOrnl1a2eylibzxziF7MgO+JlekTqw0Ggq2kQLTvYyFaoHjy9p9NWQueDisi+tkx2yYoLGmRM9t4wZI2qW0C5wMc7EDqQaw41zVZrzGBAeTLGEN0CsXyc/wE2L6Qe5F1GWKtejgkntDFMNic6sWFWZOnMn/iJaW6754xP7j6N6wo9R3nes/UOXE+4qompEolIzeOEK/LpgXbOf+fuKuSkdw8=
+  on:
+    tags: true

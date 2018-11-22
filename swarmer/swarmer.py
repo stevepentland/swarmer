@@ -6,6 +6,7 @@ from sanic import Sanic
 from sanic.log import logger
 from sanic.response import json, HTTPResponse
 
+from auth.authfactory import AuthenticationFactory
 from db import JobLog
 from jobs import JobRunner
 from models import RunnerConfig
@@ -38,7 +39,8 @@ docker_client = _create_docker_client()
 
 job_log = JobLog(store, logger)
 runner_cfg = RunnerConfig.from_environ()
-job_runner = JobRunner(job_log, docker_client, runner_cfg, logger)
+authenticator = AuthenticationFactory()
+job_runner = JobRunner(job_log, docker_client, runner_cfg, logger, authenticator)
 
 
 @app.post('/submit')
@@ -119,15 +121,13 @@ async def report_result(request, identifier):
     return HTTPResponse()
 
 
-if __name__ == "__main__":
-    import os
-
+def main():
     if not os.environ.get('SWARMER_PORT'):
         os.environ['SWARMER_PORT'] = '8500'
 
     app.run(host='0.0.0.0', port=os.environ['SWARMER_PORT'], debug=True)
 
-__author__ = 'Steve Pentland'
-__version__ = '0.2.6'
-__license__ = 'MIT'
-__maintainer__ = 'Steve Pentland'
+
+def aws_main():
+    os.environ['ENABLED_SUITES'] = 'AWS'
+    main()
