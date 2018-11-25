@@ -13,7 +13,7 @@ import redis
 import ulid
 
 from db import JobLog
-from sanic.log import logger
+import logging as logger
 from unittest.mock import Mock
 
 

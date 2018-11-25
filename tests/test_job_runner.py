@@ -31,7 +31,7 @@ def get_service_mock(mocker):
 
 
 def get_sanic_log_mock(mocker):
-    from sanic.log import logger
+    import logging as logger
     return mocker.Mock(spec=logger)
 
 @injection_wrapper

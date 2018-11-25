@@ -75,6 +75,10 @@ class JobRunner:
             # Run more jobs in the future, pass for now
             pass
 
+    def get_job(self, identifier: str):
+        self._log_operation('Getting job {i}'.format(i=identifier))
+        return self.__job_log.get_job(identifier)
+
     def get_job_tasks(self, identifier: str):
         """ Retrieve all tasks registered with the specified job
 

@@ -2,7 +2,7 @@ from unittest.mock import call
 
 import pytest
 import redis
-from sanic.log import logger
+import logging as logger
 
 from db import JobLog
 

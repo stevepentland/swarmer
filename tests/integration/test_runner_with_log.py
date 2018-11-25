@@ -7,7 +7,7 @@ from db import JobLog
 from jobs import JobRunner
 from models import RunnerConfig
 from unittest.mock import call
-from sanic.log import logger
+import logging as logger
 
 
 def injection_wrapper(f):
