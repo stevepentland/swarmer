@@ -13,7 +13,7 @@ requires = [
 
 setuptools.setup(
     name='swarmer',
-    version='0.3.0',
+    version='0.4.0',
     author='Steve Pentland',
     author_email='swarmerproject@outlook.com',
     license='MIT',
@@ -29,7 +29,7 @@ setuptools.setup(
         'Programming Language :: Python :: 3.7',
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Environment :: Console',
         'Intended Audience :: Developers',
         'Natural Language :: English',

@@ -8,20 +8,21 @@ from docker.types import RestartPolicy
 
 from auth.authfactory import AuthenticationFactory
 from db.job_log import JobLog
+from log import LogManager
 from models import RunnerConfig
 
 
 class JobRunner:
     LOGIN_DELTA = timedelta(minutes=10)
 
-    def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, log,
+    def __init__(self, job_log: JobLog, client: docker.DockerClient, config: RunnerConfig, _,
                  authenticator: AuthenticationFactory = None, max_queue_len=12):
         self.__job_log = job_log
         self.__docker = client
         self.__config = config
         self.__queue_len = max_queue_len
         self.__authenticator = authenticator if authenticator is not None and authenticator.has_providers else None
-        self.__logger = log
+        self.__logger = LogManager(__name__)
         self.__last_login = None
 
     def create_new_job(self, image_name, callback):
@@ -147,8 +148,8 @@ class JobRunner:
         # TODO: Check that it may actually be better to set all of these args as environment vars
         policy = RestartPolicy(condition='none')
         svc = self._obtain_client.services.create(image, env=run_env, restart_policy=policy,
-                                            networks=[self.__config.network],
-                                            name='{id}-{name}'.format(id=identifier, name=task['task_name']))
+                                                  networks=[self.__config.network],
+                                                  name='{id}-{name}'.format(id=identifier, name=task['task_name']))
         # spec = docker.types.ContainerSpec(image.decode('utf-8'), args=run_args,)
         # template = docker.types.TaskTemplate(spec, restart_policy='none')
         # svc_id = self.__docker.create_service(

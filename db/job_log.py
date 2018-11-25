@@ -1,14 +1,17 @@
-import redis
 import json
+
+import redis
+
+from log import LogManager
 
 
 class JobLog:
     """ The JobLog is responsible for handling the redis job tracking
     """
 
-    def __init__(self, rd: redis.StrictRedis, logger):
+    def __init__(self, rd: redis.StrictRedis, _):
         self.__redis = rd
-        self.__logger = logger
+        self.__logger = LogManager(__name__)
 
     def add_job(self, identifier: str, image_name: str, callback: str):
         """ Add a new job to the tracking database

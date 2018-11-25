@@ -1,22 +1,28 @@
 import json
+import logging
 
 import falcon
 from falcon_json import hooks
 
 from jobs import JobRunner
+from log import LogManager
 from .schema import get_schema_for
-import logging
+
+logger = LogManager(__name__)
 
 
 class SubmitJobResource(object):
     def __init__(self, runner: JobRunner):
+        logger.info('Spinning up the SubmitJobResource')
         self._runner = runner
 
     @falcon.before(hooks.process_json_request)
     @falcon.before(hooks.validate_json_schema(get_schema_for('job_submit')))
     def on_post(self, req: falcon.Request, resp: falcon.Response):
+        logger.info('Received request to create new job')
         details = req.context['json']
         identifier = self._runner.create_new_job(details['image_name'], details['callback_url'])
+        logger.info('Job created with identifier {i}'.format(i=identifier))
         resp.status = falcon.HTTP_201
         resp.body = json.dumps({'id': identifier})
         resp.content_type = falcon.MEDIA_JSON
@@ -25,22 +31,27 @@ class SubmitJobResource(object):
 
 class SubmitTaskResource(object):
     def __init__(self, runner: JobRunner):
+        logger.info('Spinning up SubmitTaskResource')
         self._runner = runner
 
     @falcon.before(hooks.process_json_request)
     @falcon.before(hooks.validate_json_schema(get_schema_for('task_submit')))
     def on_post(self, req: falcon.Request, resp: falcon.Response, job_id: str):
+        logger.info('Received request to add tasks to job {i}'.format(i=job_id))
         data = req.context['json']
         self._runner.add_tasks_to_job(job_id, data)
+        logger.info('Adding tasks to job {i} complete'.format(i=job_id))
         resp.status = falcon.HTTP_201
         resp.location = '/status/{i}/tasks'.format(i=job_id)
 
 
 class JobStatusResource(object):
     def __init__(self, runner: JobRunner):
+        logger.info('Spinning up the JobStatusResource')
         self._runner = runner
 
     def on_get(self, _: falcon.Request, resp: falcon.Response, job_id: str):
+        logger.info('Received request for status of job {i}'.format(i=job_id))
         job = self._runner.get_job(job_id)
         resp.body = json.dumps(job)
         resp.content_type = falcon.MEDIA_JSON
@@ -48,9 +59,11 @@ class JobStatusResource(object):
 
 class TaskStatusResource(object):
     def __init__(self, runner: JobRunner):
+        logger.info('Spinning up the TaskStatusResource')
         self._runner = runner
 
     def on_get(self, _: falcon.Request, resp: falcon.Response, job_id):
+        logger.info('Received request for tasks in job {i}'.format(i=job_id))
         tasks = self._runner.get_job_tasks(job_id)
         resp.body = json.dumps(tasks)
         resp.content_type = falcon.MEDIA_JSON
@@ -58,11 +71,13 @@ class TaskStatusResource(object):
 
 class ClientCallbackResource(object):
     def __init__(self, runner: JobRunner):
+        logger.info('Spinning up the ClientCallbackResource')
         self._runner = runner
 
     @falcon.before(hooks.process_json_request)
     @falcon.before(hooks.validate_json_schema(get_schema_for('result_submit')))
     def on_post(self, req: falcon.Request, resp: falcon.Response, job_id):
+        logger.info('Received results for a task in job {i}'.format(i=job_id))
         data = req.context['json']
         self._runner.complete_task(job_id, data['task_name'], data['task_status'], data['task_result'])
         resp.status = falcon.HTTP_NO_CONTENT
@@ -111,6 +126,7 @@ def build_runner():
 
 
 def add_api_routes(app: falcon.API):
+    logger.info('Adding routes to api')
     job_runner = build_runner()
 
     app.add_route('/submit', SubmitJobResource(job_runner))
@@ -119,3 +135,4 @@ def add_api_routes(app: falcon.API):
     app.add_route('/status/{job_id}/tasks', TaskStatusResource(job_runner))
     app.add_route('/result/{job_id}', ClientCallbackResource(job_runner))
     app.add_route('/test', TestingEndpoint())
+    logger.info('All routes added')

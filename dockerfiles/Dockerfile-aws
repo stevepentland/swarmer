@@ -2,8 +2,9 @@ FROM python:3.7-stretch
 
 RUN mkdir /build
 COPY . /build/
-RUN pip install /build && rm -rf /build
+RUN pip install '/build[AWS]' && rm -rf /build
 
+ENV SWARMER_PORT=8500
 EXPOSE 8500
 
 ENTRYPOINT [ "swarmer" ]

@@ -5,9 +5,8 @@ __pycache__/
 .gitignore
 dockerfiles/Dockerfile
 .dockerignore
-LICENSE
-README.md
 .pytest_cache/
 .coverage
 docker-compose.example.yml
 .travis.yml
+*.egg-info

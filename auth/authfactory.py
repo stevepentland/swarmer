@@ -3,6 +3,8 @@ from datetime import datetime
 from docker import DockerClient
 from pkg_resources import iter_entry_points, DistributionNotFound
 
+from log import LogManager
+
 
 class AuthenticationFactory:
     EXTRAS_KEY = 'swarmer.credentials'
@@ -12,6 +14,7 @@ class AuthenticationFactory:
     def __init__(self):
         self._providers = dict()
         self._setup_providers()
+        self._logger = LogManager(__name__)
 
     @property
     def has_providers(self) -> bool:
@@ -23,7 +26,10 @@ class AuthenticationFactory:
             [p for p in self._providers.values() if p[self.PROVIDER_KEY].should_authenticate(p[self.LAST_LOGIN_KEY])])
 
     def perform_logins(self, client: DockerClient):
+        self._logger.info('Running logins for docker client')
+
         if not self.has_providers:
+            self._logger.info('No providers present, skipping...')
             return
 
         for entry in self._providers.values():
@@ -35,6 +41,7 @@ class AuthenticationFactory:
 
     def _setup_providers(self):
         for entry_point in iter_entry_points(self.EXTRAS_KEY):
+            self._logger.info('Loading authentication providers')
             try:
                 provider = entry_point.load()
                 provider_instance = provider()
@@ -45,4 +52,5 @@ class AuthenticationFactory:
                 # to either:
                 #   1) Only use the enabled ones, or
                 #   2) Only have the ability to fetch from public registries
-                pass
+                self._logger.info(
+                    "It appears that the feature {feat} was not enabled, skipping".format(feat=entry_point.name))
