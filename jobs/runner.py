@@ -78,7 +78,9 @@ class JobRunner:
 
     def get_job(self, identifier: str):
         self._log_operation('Getting job {i}'.format(i=identifier))
-        return self.__job_log.get_job(identifier)
+        job = self.__job_log.get_job(identifier)
+        job['tasks'] = json.loads(job['tasks'])
+        return job
 
     def get_job_tasks(self, identifier: str):
         """ Retrieve all tasks registered with the specified job
@@ -102,28 +104,6 @@ class JobRunner:
             self.__last_login = datetime.now()
 
         return self.__docker
-
-    def _run_tasks_from(self, identifier: str):
-        """ THIS IS A STUB, IT NEEDS TO BE FLESHED OUT
-
-        This will be used to run remaining tasks once the max queue length is
-        being used.
-        """
-        # job = self.__job_log.get_job(identifier)
-        # tasks = job['tasks']
-        # image = job['__image']
-        # run_args = ['--report_url', self.__config.host,
-        #             '--report_port', self.__config.port,
-        #             '--']
-
-        # # Don't run more if we're already maxed out
-        # if job['__task_count_started'] >= self.__queue_len:
-        #     return
-        # def startable(t): return t['status'] == 'off'
-        #
-        # current_tasks = self.__job_log.get_tasks(identifier)
-        # next_up
-        pass
 
     def _start_task(self, identifier, task):
         # Get the matching Job to obtain image

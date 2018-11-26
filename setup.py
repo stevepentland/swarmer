@@ -3,17 +3,17 @@ import setuptools
 requires = [
     'redis==2.10.6',
     'falcon==1.4.1',
-    'falcon-json==0.0.1',
     'docker==3.5.1',
     'docker-pycreds==0.3.0',
     'ulid-py==0.0.7',
     'requests==2.20.0',
-    'gunicorn==19.9.0'
+    'gunicorn==19.9.0',
+    'jsonschema=2.6.0'
 ]
 
 setuptools.setup(
     name='swarmer',
-    version='0.4.2',
+    version='0.4.3',
     author='Steve Pentland',
     author_email='swarmerproject@outlook.com',
     license='MIT',
