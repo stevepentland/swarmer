@@ -5,35 +5,34 @@ import falcon
 from api import add_api_routes
 
 
-def _create_docker_client():
-    """ Helper method to create the docker client """
+def _create_wrapper():
+    """ Creates the docker client wrapper"""
     from docker import DockerClient
+    from wrapper import DockerWrapper
+    from models import RunnerConfig
+    from auth.authfactory import AuthenticationFactory
+
     socket_path = os.environ.get('DOCKER_SOCKET_PATH', 'unix://var/run/docker.sock')
+    return DockerWrapper(DockerClient(base_url=socket_path), RunnerConfig.from_environ(), AuthenticationFactory())
 
-    return DockerClient(base_url=socket_path)
 
-
-def _create_redis():
-    """ Helper method to create the redis client """
+def _create_queue():
+    """ Creates the job queue """
     from redis import StrictRedis
+    from db import JobDb
     redis_host = os.environ['REDIS_TARGET']
     redis_port = os.environ['REDIS_PORT']
 
-    return StrictRedis(host=redis_host, port=redis_port)
+    store = StrictRedis(host=redis_host, port=redis_port)
+    job_log = JobDb(store)
+
+    from jobs.queue import JobQueue
+    return JobQueue(job_log)
 
 
 def build_runner():
-    from auth.authfactory import AuthenticationFactory
-    from db import JobLog
     from jobs import JobRunner
-    from models import RunnerConfig
-    import logging
-    docker_client = _create_docker_client()
-
-    job_log = JobLog(_create_redis(), logging.getLogger('REPLACE ME'))
-    runner_cfg = RunnerConfig.from_environ()
-    authenticator = AuthenticationFactory()
-    return JobRunner(job_log, docker_client, runner_cfg, logging.getLogger('REPLACE ME'), authenticator)
+    return JobRunner(_create_wrapper(), _create_queue())
 
 
 def build_application(runner_fn=None):

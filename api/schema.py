@@ -1,12 +1,32 @@
 job_submit_schema = {
     'type': 'object',
-    'required': ['image_name', 'callback_url'],
+    'required': ['image_name', 'callback_url', 'tasks'],
     'properties': {
         'image_name': {
             'type': 'string'
         },
         'callback_url': {
             'type': 'string'
+        },
+        'tasks': {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'required': ['task_name', 'task_args'],
+                'properties': {
+                    'task_name': {
+                        'type': 'string'
+                    },
+                    'task_args': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'string'
+                        },
+                        'minItems': 0
+                    }
+                }
+            },
+            'minItems': 1
         }
     }
 }

@@ -1,1 +1,1 @@
-from .job_log import JobLog
+from .job_db import JobDb

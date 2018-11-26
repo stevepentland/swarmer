@@ -12,7 +12,7 @@ import pytest
 import redis
 import ulid
 
-from db import JobLog
+from db import JobDb
 import logging as logger
 from unittest.mock import Mock
 
@@ -20,7 +20,7 @@ from unittest.mock import Mock
 @pytest.mark.skipif(os.environ.get('TEST_INCLUDE_REDIS') is None, reason='requires local default redis to run')
 class TestLiveJobLog:
     database = redis.StrictRedis()
-    job_log = JobLog(database, Mock(spec=logger))
+    job_log = JobDb(database)
 
     def test_add_job_and_delete(self):
         job_key = ulid.new().str

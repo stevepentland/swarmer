@@ -3,11 +3,6 @@
 
 Python application and API to run services from within a docker swarm.
 
-# *NOTE*
-There have been some significant changes between versions 0.2.6 and version 0.3.0 that
-change the way swarmer is installed and works to provide authentication to private
-docker registries. This documentation will be updated soon to reflect that.
-
 # How it works
 The swarmer lives in a service inside a docker swarm. Once exposed, it offers an
 API to activate one shot docker service runs. There is a companion application to this
@@ -36,29 +31,20 @@ via `docker stack deploy -c docker-compose.yml`, changing any of the values that
 Once started, there will be a service exposed at the address of your swarm that you can 
 post jobs to. 
 
+## Making your own image
+
+If you're building your own image using this application, you can simply `pip install swarmer` to 
+get it in there. Then just expose your desired ports and run `swarmer` as the entry point.
+
 ## The initial request
 
 When you want to submit a new job, you send a request to the `/submit` endpoint, with a 
 content type of `application/json` and a body with the following:
 
-```json
+```
 {
   "image_name": "some-image:latest",
-  "callback_url": "your postback url"
-}
-```
-
-You will receive a response with an identifier, this is a unique job id you can use to submit
-tasks to your job. 
-
-## Adding tasks
-
-Once your job has been created, you can submit a list of tasks to it. This is done via the
-`/submit/<identifier>/tasks` POST endpoint, where `identifier` is the id value you were
-given when the job was created. The body of this request should look like the following:
-
-```
-{
+  "callback_url": "your postback url",
   "tasks": [
     {
       "task_name": "<Name>",
@@ -68,7 +54,9 @@ given when the job was created. The body of this request should look like the fo
   ]
 }
 ```
-Once the tasks have been submitted, they will begin running immediately.
+
+You will receive a response with an identifier, this is a unique job id you can use to check on the 
+status of your job
 
 ## Checking the status of a job
 

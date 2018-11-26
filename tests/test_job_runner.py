@@ -1,28 +1,28 @@
-from unittest.mock import call
-import docker
 import ulid
 
-from db import JobLog
 from jobs import JobRunner
+from jobs.queue import JobQueue, RunnableTask
 from models import RunnerConfig
-from docker.types.services import RestartPolicy
+from wrapper import DockerWrapper
 
 cfg = RunnerConfig('swarmer', '1234', 'overlay')
 
 
 def injection_wrapper(f):
-    def wrapper(mocker):
-        return f(get_job_log_mock(mocker), get_docker_mock(mocker), get_sanic_log_mock(mocker), mocker)
+    def wrapper(mocker, monkeypatch):
+        kwargs = {'job_queue_mock': get_job_queue_mock(mocker), 'docker_mock': get_docker_mock(mocker),
+                  'mocker': mocker, 'monkeypatch': monkeypatch}
+        return f(**kwargs)
 
     return wrapper
 
 
-def get_job_log_mock(mocker):
-    return mocker.Mock(spec=JobLog)
+def get_job_queue_mock(mocker):
+    return mocker.Mock(spec=JobQueue)
 
 
 def get_docker_mock(mocker):
-    return mocker.Mock(spec=docker.DockerClient)
+    return mocker.Mock(spec=DockerWrapper)
 
 
 def get_service_mock(mocker):
@@ -30,29 +30,25 @@ def get_service_mock(mocker):
     return mocker.Mock(spec=Service)
 
 
-def get_sanic_log_mock(mocker):
-    import logging as logger
-    return mocker.Mock(spec=logger)
-
 @injection_wrapper
-def test_create_job(job_log_mock, docker_mock, log_mock, mocker):
+def test_create_job(**kwargs):
+    job_queue_mock, docker_mock, mocker, monkeypatch = kwargs['job_queue_mock'], kwargs['docker_mock'], kwargs[
+        'mocker'], kwargs['monkeypatch']
+    job_queue_mock.get_next_tasks = mocker.Mock(return_value=[])
     identifier = ulid.new()
     mocker.patch.object(ulid, 'new')
     ulid.new = mocker.MagicMock(return_value=identifier)
-    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
-    result = subject.create_new_job('image', 'www.example.com')
+    subject = JobRunner(docker_mock, job_queue_mock)
+    result = subject.create_new_job('image', 'www.example.com', [{'task_name': 'one', 'task_args': ['a', 'b', 'c']}])
     ulid.new.assert_called_once()
-    job_log_mock.add_job.assert_called_once_with(
-        identifier.str, 'image', 'www.example.com')
+    job_queue_mock.add_new_job.assert_called_once_with(
+        identifier.str, 'image', 'www.example.com', [{'task_name': 'one', 'task_args': ['a', 'b', 'c']}])
     assert result == identifier.str
 
 
 subject_job = {
     '__image': 'an-image',
     '__callback': 'www.example.com',
-    '__task_count_total': 2,
-    '__task_count_started': 0,
-    '__task_count_complete': 0,
     'tasks': [
         {'args': ['a', 'b', 'c'], 'status': 'off',
          'result': 'none', 'name': 'one', '__task_id': '12345'},
@@ -73,78 +69,30 @@ class SvcMock:
 
 
 @injection_wrapper
-def test_add_tasks_to_job(job_log_mock, docker_mock, log_mock, mocker):
-    job_log_mock.get_job = mocker.Mock(return_value=subject_job)
-    docker_mock.services.create = mocker.Mock(return_value=SvcMock(id='12345'))
-    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
-    subject.add_tasks_to_job('abc', call_tasks)
-    job_log_mock.add_tasks.assert_called_once_with('abc', call_tasks)
+def test_add_tasks_to_job(**kwargs):
+    job_queue_mock, docker_mock, mocker, monkeypatch = kwargs['job_queue_mock'], kwargs['docker_mock'], kwargs[
+        'mocker'], kwargs['monkeypatch']
 
-    restart_policy = RestartPolicy(condition='none')
-    service_calls = [call('an-image',
-                          env=['SWARMER_ADDRESS=http://swarmer:1234/result/abc', 'TASK_NAME=one', 'SWARMER_JOB_ID=abc',
-                               'RUN_ARGS=a,b,c'], name='abc-one', networks=['overlay'],
-                          restart_policy=restart_policy),
-                     call('an-image',
-                          env=['SWARMER_ADDRESS=http://swarmer:1234/result/abc', 'TASK_NAME=two', 'SWARMER_JOB_ID=abc',
-                               'RUN_ARGS=d,e,f'], name='abc-two', networks=['overlay'],
-                          restart_policy=restart_policy)]
+    identifier = ulid.new()
+    mocker.patch.object(ulid, 'new')
+    ulid.new = mocker.MagicMock(return_value=identifier)
+    job_queue_mock.get_job = mocker.Mock(return_value=subject_job)
+    job_queue_mock.get_next_tasks = mocker.Mock(
+        return_value=[RunnableTask(identifier.str, t['task_name'], t['task_args'], 'an-image') for t in call_tasks])
+    subject = JobRunner(docker_mock, job_queue_mock)
+    subject.create_new_job(subject_job['__image'], subject_job['__callback'], subject_job['tasks'])
+    job_queue_mock.add_new_job.assert_called_once_with(identifier.str, subject_job['__image'],
+                                                       subject_job['__callback'], subject_job['tasks'])
 
-    update_status_calls = [
-        call('abc', 'one', 'RUNNING'), call('abc', 'two', 'RUNNING')]
-
-    docker_mock.services.create.assert_has_calls(service_calls)
-    job_log_mock.set_task_id.assert_called()
-    job_log_mock.update_status.assert_has_calls(update_status_calls)
-    job_log_mock.modify_task_count.assert_has_calls(
-        [call('abc', '__task_count_started', 1)] * 2)
+    job_queue_mock.mark_task_started.assert_called()
 
 
 @injection_wrapper
-def test_complete_task(job_log_mock, docker_mock, log_mock, mocker):
-    job_log_mock.get_task = mocker.Mock(
-        return_value={'name': 'test', 'args': ['a', 9, 'v'], '__task_id': '123456'})
-    # Not testing post-complete logic in this test
-    job_log_mock.get_task_count = mocker.Mock(
-        side_effect=lambda i, k: 1 if k == '__task_count_complete' else 2)
-    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
-    subject.complete_task('abc', 'test', 'PASSED', 'The test passed')
-    job_log_mock.update_result.assert_called_once_with(
-        'abc', 'test', 'The test passed')
-    job_log_mock.update_status.assert_called_once_with('abc', 'test', 'PASSED')
-    increment_calls = [call('abc', '__task_count_started', -1),
-                       call('abc', '__task_count_complete', 1)]
-    job_log_mock.modify_task_count.assert_has_calls(increment_calls)
-    get_calls = [call('abc', 'test')] * 2
-    job_log_mock.get_task.assert_has_calls(get_calls)
-    docker_mock.services.get.assert_called_once_with('123456')
-    count_query_calls = [call('abc', '__task_count_complete'), call(
-        'abc', '__task_count_total')]
-    job_log_mock.get_task_count.assert_has_calls(count_query_calls)
+def test_complete_task(**kwargs):
+    job_queue_mock, docker_mock, mocker, monkeypatch = kwargs['job_queue_mock'], kwargs['docker_mock'], kwargs[
+        'mocker'], kwargs['monkeypatch']
 
-
-@injection_wrapper
-def test_complete_final_task(job_log_mock, docker_mock, log_mock, mocker):
-    import requests
-    mocker.patch.object(requests, 'post')
-    job_log_mock.get_task = mocker.Mock(
-        return_value={'name': 'test', 'args': ['a', 9, 'v'], '__task_id': '123456'})
-    job_log_mock.get_job = mocker.Mock(return_value={'__image': 'an-image', '__callback': 'www.example.com', 'tasks': '[]'})
-    # We'll hit the completed branch now
-    job_log_mock.get_task_count = mocker.Mock(return_value=1)
-    subject = JobRunner(job_log_mock, docker_mock, cfg, log_mock)
-    subject.complete_task('abc', 'test', 'PASSED', 'The test passed')
-    job_log_mock.update_result.assert_called_once_with(
-        'abc', 'test', 'The test passed')
-    job_log_mock.update_status.assert_called_once_with('abc', 'test', 'PASSED')
-    increment_calls = [call('abc', '__task_count_started', -1),
-                       call('abc', '__task_count_complete', 1)]
-    job_log_mock.modify_task_count.assert_has_calls(increment_calls)
-    get_calls = [call('abc', 'test')] * 2
-    job_log_mock.get_task.assert_has_calls(get_calls)
-    docker_mock.services.get.assert_called_once_with('123456')
-    count_query_calls = [call('abc', '__task_count_complete'), call(
-        'abc', '__task_count_total')]
-    job_log_mock.get_task_count.assert_has_calls(count_query_calls)
-    job_log_mock.clear_job.assert_called_once_with('abc')
-    requests.post.assert_called_once()
+    subject = JobRunner(docker_mock, job_queue_mock)
+    job_queue_mock.complete_task = mocker.Mock(return_value=([123456], False))
+    subject.complete_task('abc', 'test', 0, {'stdout': 'ok', 'stderr': None})
+    job_queue_mock.complete_task.assert_called_once_with('abc', 'test', 0, {'stdout': 'ok', 'stderr': None})
