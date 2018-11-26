@@ -8,7 +8,7 @@ requires = [
     'ulid-py==0.0.7',
     'requests==2.20.0',
     'gunicorn==19.9.0',
-    'jsonschema=2.6.0'
+    'jsonschema==2.6.0'
 ]
 
 setuptools.setup(
