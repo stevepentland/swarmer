@@ -13,8 +13,8 @@ class AuthenticationFactory:
 
     def __init__(self):
         self._providers = dict()
-        self._setup_providers()
         self._logger = LogManager(__name__)
+        self._setup_providers()        
 
     @property
     def has_providers(self) -> bool:
