@@ -1,22 +1,22 @@
 from os import environ, makedirs
 from pathlib import Path
-from typing import Iterable
 
 from .cred_errors import MissingEnvironmentError
 
 
 class CredBuilder:
-    AWS_ENVIRONMENTS = [
-        'AWS_ACCESS_KEY_ID',
-        'AWS_SECRET_ACCESS_KEY',
-        'AWS_REGION'
-    ]
+    AWS_ACCESS_KEY_ID_KEY = 'AWS_ACCESS_KEY_ID'
+    AWS_SECRET_ACCESS_KEY = 'AWS_SECRET_ACCESS_KEY'
+    AWS_REGION_KEY = 'AWS_REGION'
+    AWS_ACCESS_KEY_ID_FILE_KEY = 'AWS_ACCESS_KEY_ID_FILE'
+    AWS_SECRET_ACCESS_KEY_FILE = 'AWS_SECRET_ACCESS_KEY_FILE'
 
     BASIC_AUTH_USER_KEY = 'BASIC_AUTH_USER'
     BASIC_AUTH_PASS_KEY = 'BASIC_AUTH_PASS'
     BASIC_AUTH_REGISTRY_KEY = 'BASIC_AUTH_REGISTRY'
     BASIC_AUTH_REAUTH_KEY = 'BASIC_AUTH_SHOULD_REAUTH'
     BASIC_AUTH_REAUTH_INTERVAL_KEY = 'BASIC_AUTH_REAUTH_HOURS'
+    BASIC_AUTH_PASS_FILE_KEY = "BASIC_AUTH_PASS_FILE"
 
     HOME_PATH = Path.home()
     AWS_CONFIG_FILE_BASE = Path(HOME_PATH, '.aws')
@@ -28,13 +28,29 @@ class CredBuilder:
         """ Setup the environment to use boto3 to generate authentication
         for AWS ecr.
         """
-        _ensure_env_vars(CredBuilder.AWS_ENVIRONMENTS)
+        missing_envs = []
+        if CredBuilder.AWS_REGION_KEY not in environ.keys():
+            missing_envs.append(CredBuilder.AWS_REGION_KEY)
+
+        required_access_key_envs = [CredBuilder.AWS_ACCESS_KEY_ID_KEY, CredBuilder.AWS_ACCESS_KEY_ID_FILE_KEY]
+        if not any([k for k in environ.keys() if k in required_access_key_envs]):
+            missing_envs.extend(required_access_key_envs)
+
+        required_secret_key_envs = [CredBuilder.AWS_SECRET_ACCESS_KEY, CredBuilder.AWS_SECRET_ACCESS_KEY_FILE]
+        if not any([k for k in environ.keys() if k in required_secret_key_envs]):
+            missing_envs.extend(required_secret_key_envs)
+
+        if any(missing_envs):
+            raise MissingEnvironmentError(missing_envs)
+
+        access_key_id, secret_access_key = _extract_aws_credentials()
+
         makedirs(CredBuilder.AWS_CONFIG_FILE_BASE, exist_ok=True)
         with open(CredBuilder.AWS_CREDENTIALS_FILE_PATH, mode='w+', encoding='utf-8') as f:
             default_lines = '\n'.join(
                 ['[default]',
-                 'aws_access_key_id = {kid}'.format(kid=environ.get('AWS_ACCESS_KEY_ID')),
-                 'aws_secret_access_key = {sak}'.format(sak=environ.get('AWS_SECRET_ACCESS_KEY'))
+                 'aws_access_key_id = {kid}'.format(kid=access_key_id),
+                 'aws_secret_access_key = {sak}'.format(sak=secret_access_key)
                  ])
             f.writelines(default_lines)
 
@@ -65,8 +81,10 @@ class CredBuilder:
         If there is no interval set in the environment, yet it is indicated that authentication
         needs to be renewed, a period of 6 hours will be used by default
         """
-        if not {CredBuilder.BASIC_AUTH_USER_KEY, CredBuilder.BASIC_AUTH_PASS_KEY,
-                CredBuilder.BASIC_AUTH_REGISTRY_KEY}.issubset(environ.keys()):
+        if not {CredBuilder.BASIC_AUTH_USER_KEY, CredBuilder.BASIC_AUTH_REGISTRY_KEY}.issubset(environ.keys()):
+            return None
+
+        if not any([k for k in environ.keys() if k in [CredBuilder.BASIC_AUTH_PASS_KEY, CredBuilder.BASIC_AUTH_PASS_FILE_KEY]]):
             return None
 
         def build_renewal_settings():
@@ -75,18 +93,35 @@ class CredBuilder:
             return (
                 should_renew, environ.get(CredBuilder.BASIC_AUTH_REAUTH_INTERVAL_KEY, '6')) if should_renew else None
 
-        return (environ.get(CredBuilder.BASIC_AUTH_USER_KEY), environ.get(CredBuilder.BASIC_AUTH_PASS_KEY),
+        return (environ.get(CredBuilder.BASIC_AUTH_USER_KEY), _extract_basic_password(),
                 environ.get(CredBuilder.BASIC_AUTH_REGISTRY_KEY), build_renewal_settings())
 
 
-def _ensure_env_vars(required: Iterable[str]):
-    missing = []
-    for e in required:
-        if e not in environ.keys():
-            missing.append(e)
+def _extract_aws_credentials() -> (str, str):
+    # Get access key id first
+    if CredBuilder.AWS_ACCESS_KEY_ID_FILE_KEY in environ.keys():
+        with open(environ.get(CredBuilder.AWS_ACCESS_KEY_ID_FILE_KEY), 'r') as f:
+            aws_access_key_id = f.readline()
+    else:
+        aws_access_key_id = environ.get(CredBuilder.AWS_ACCESS_KEY_ID_KEY)
 
-    if any(missing):
-        raise MissingEnvironmentError(missing)
+    if CredBuilder.AWS_SECRET_ACCESS_KEY_FILE in environ.keys():
+        with open(environ.get(CredBuilder.AWS_SECRET_ACCESS_KEY_FILE), 'r') as f:
+            aws_secret_access = f.readline()
+    else:
+        aws_secret_access = environ.get(CredBuilder.AWS_SECRET_ACCESS_KEY)
+
+    return aws_access_key_id, aws_secret_access
+
+
+def _extract_basic_password() -> str:
+    if CredBuilder.BASIC_AUTH_PASS_FILE_KEY in environ.keys():
+        with open(environ.get(CredBuilder.BASIC_AUTH_PASS_FILE_KEY)) as f:
+            password = f.readline()
+    else:
+        password = environ.get(CredBuilder.BASIC_AUTH_PASS_KEY)
+
+    return password
 
 
 __all__ = ['CredBuilder']
