@@ -30,7 +30,7 @@ more-itertools==4.3.0
 multidict==4.4.2
 pbr==5.1.0
 pluggy==0.8.0
-py==1.7.0
+py==1.10.0
 pycodestyle==2.4.0
 PyHamcrest==1.9.0
 pylint==2.1.1
