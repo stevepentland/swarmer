@@ -46,7 +46,7 @@ s3transfer==0.1.13
 six==1.11.0
 Twisted==18.9.0
 typed-ast==1.1.0
-ujson==1.35
+ujson==5.2.0
 ulid-py==0.0.7
 urllib3==1.24.1
 uvloop==0.11.3
